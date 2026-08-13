@@ -14,8 +14,8 @@ export async function POST(req: Request) {
     .from('citas')
     .update({ estado: 'confirmado_tel' })
     .eq('id', citaId)
-    // Usamos .in para permitir cualquiera de estos estados:
-    .in('estado', ['no confirmado', 'en espera', 'en box'])
+    // Usamos los estados exactos que existen en tu CSV:
+    .in('estado', ['programada', 'en_espera', 'en_atencion'])
     .select()
     .maybeSingle()
 

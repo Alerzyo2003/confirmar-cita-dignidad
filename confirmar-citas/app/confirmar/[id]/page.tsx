@@ -8,11 +8,13 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-export default async function ConfirmarCitaPage({ params }: { params: { id: string } }) {
+export default async function ConfirmarCitaPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  
   const { data: cita } = await supabaseAdmin
     .from('citas')
     .select('id, inicio, estado, motivo, pacientes(nombre, apellido)')
-    .eq('id', params.id)
+    .eq('id', id)
     .maybeSingle()
 
   if (!cita) {

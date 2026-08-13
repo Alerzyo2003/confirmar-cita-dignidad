@@ -8,9 +8,10 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
+// Si usas Next.js 15, params es una Promesa:
 export default async function ConfirmarCitaPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  
+
   const { data: cita } = await supabaseAdmin
     .from('citas')
     .select('id, inicio, estado, motivo, pacientes(nombre, apellido)')

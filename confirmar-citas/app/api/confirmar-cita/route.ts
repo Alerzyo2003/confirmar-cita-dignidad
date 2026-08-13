@@ -14,12 +14,13 @@ export async function POST(req: Request) {
     .from('citas')
     .update({ estado: 'confirmado_tel' })
     .eq('id', citaId)
-    .eq('estado', 'programada')
+    // Usamos .in para permitir cualquiera de estos estados:
+    .in('estado', ['no confirmado', 'en espera', 'en box'])
     .select()
     .maybeSingle()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  if (!data) return NextResponse.json({ error: 'La cita no se pudo confirmar' }, { status: 409 })
+  if (!data) return NextResponse.json({ error: 'La cita no se pudo confirmar por su estado actual' }, { status: 409 })
 
   return NextResponse.json({ ok: true })
 }

@@ -15,23 +15,28 @@ function formatearRutChileno(valor: string): string {
 }
 
 export async function POST(req: Request) {
-  const { valor, esOtroDocumento } = await req.json()
+  try {
+    const { valor, esOtroDocumento } = await req.json()
 
-  if (!valor || !valor.trim()) {
-    return NextResponse.json({ error: 'Debes ingresar tu documento' }, { status: 400 })
+    if (!valor || !valor.trim()) {
+      return NextResponse.json({ error: 'Debes ingresar tu documento' }, { status: 400 })
+    }
+
+    const rutBuscado = esOtroDocumento ? valor.trim() : formatearRutChileno(valor.trim())
+
+    const { data, error } = await supabaseAdmin
+      .from('pacientes')
+      .select('id, nombre, apellido, rut, telefono, activo, motivo_deshabilitado')
+      .eq('rut', rutBuscado)
+      .maybeSingle()
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ paciente: data, rutBuscado })
+  } catch (error) {
+    console.error("Error al buscar paciente:", error)
+    return NextResponse.json({ error: 'Error del servidor' }, { status: 500 })
   }
-
-  const rutBuscado = esOtroDocumento ? valor.trim() : formatearRutChileno(valor.trim())
-
-  const { data, error } = await supabaseAdmin
-    .from('pacientes')
-    .select('id, nombre, apellido, rut, telefono, activo, motivo_deshabilitado')
-    .eq('rut', rutBuscado)
-    .maybeSingle()
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
-
-  return NextResponse.json({ paciente: data, rutBuscado })
 }

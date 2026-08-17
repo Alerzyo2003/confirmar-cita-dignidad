@@ -87,9 +87,10 @@ export default function AgendarClient() {
     } catch { setError("Error al cargar los horarios.") } finally { setCargando(false) }
   }
 
-  // --- 🌟 NUEVO: Confirmar Cita Real ---
+  // --- 🌟 CORREGIDO: Verificación estricta para TypeScript ---
   const confirmarCita = async () => {
-    if (!pacienteEncontrado || !profesionalSeleccionado || !diaSeleccionado || !horaSeleccionada) return;
+    // Agregamos "pacienteEncontrado === 'no_encontrado'" para que TypeScript sepa que aquí ya es seguro que es de tipo Paciente
+    if (!pacienteEncontrado || pacienteEncontrado === 'no_encontrado' || !profesionalSeleccionado || !diaSeleccionado || !horaSeleccionada) return;
     
     setAgendando(true)
     setError('')
@@ -99,7 +100,7 @@ export default function AgendarClient() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          pacienteId: pacienteEncontrado.id,
+          pacienteId: pacienteEncontrado.id, // Ahora TypeScript sabe que sí existe la propiedad .id
           profesionalId: profesionalSeleccionado.user_id,
           fecha: diaSeleccionado.fecha,
           hora: horaSeleccionada

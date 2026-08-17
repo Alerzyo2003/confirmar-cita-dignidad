@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { Turnstile } from '@marsidev/react-turnstile'
 import { Search, Loader2, Users, User, ChevronRight, ArrowLeft, CalendarDays, IdCard, CheckCircle } from 'lucide-react'
 
 type Especialidad = { id: string; nombre: string; cantidadProfesionales: number }
@@ -13,7 +14,7 @@ type Paso = 'inicio' | 'especialidades' | 'profesionalesPorEspecialidad' | 'prof
 export default function AgendarClient() {
   const [paso, setPaso] = useState<Paso>('inicio')
   const [cargando, setCargando] = useState(false)
-  const [agendando, setAgendando] = useState(false) // Nuevo estado para el botón de confirmar
+  const [agendando, setAgendando] = useState(false) 
   const [error, setError] = useState('')
 
   const [especialidades, setEspecialidades] = useState<Especialidad[]>([])
@@ -29,6 +30,7 @@ export default function AgendarClient() {
   const [diasDisponibles, setDiasDisponibles] = useState<DiaDisponible[]>([])
   const [diaSeleccionado, setDiaSeleccionado] = useState<DiaDisponible | null>(null)
   const [horaSeleccionada, setHoraSeleccionada] = useState<string | null>(null)
+  const [tokenTurnstile, setTokenTurnstile] = useState<string | null>(null)
 
   const irAEspecialidades = async () => {
     setPaso('especialidades'); setCargando(true)
@@ -64,7 +66,9 @@ export default function AgendarClient() {
       const res = await fetch('/api/buscar-paciente', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        // Eliminamos el token de aquí, el middleware de Vercel se encarga de proteger esta ruta
         body: JSON.stringify({ valor: documento, esOtroDocumento })
+        
       })
       const data = await res.json()
       if (!data.paciente) setPacienteEncontrado('no_encontrado')
@@ -87,11 +91,16 @@ export default function AgendarClient() {
     } catch { setError("Error al cargar los horarios.") } finally { setCargando(false) }
   }
 
-  // --- 🌟 CORREGIDO: Verificación estricta para TypeScript ---
+  // --- 🌟 CORREGIDO: Confirmar Cita Real con TypeScript estricto y Token ---
   const confirmarCita = async () => {
-    // Agregamos "pacienteEncontrado === 'no_encontrado'" para que TypeScript sepa que aquí ya es seguro que es de tipo Paciente
+    // Aquí está la corrección que TypeScript pedía: "pacienteEncontrado === 'no_encontrado'"
     if (!pacienteEncontrado || pacienteEncontrado === 'no_encontrado' || !profesionalSeleccionado || !diaSeleccionado || !horaSeleccionada) return;
     
+    if (!tokenTurnstile) {
+      setError('Por favor espera a que se valide tu conexión segura.');
+      return;
+    }
+
     setAgendando(true)
     setError('')
     
@@ -100,19 +109,19 @@ export default function AgendarClient() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          pacienteId: pacienteEncontrado.id, // Ahora TypeScript sabe que sí existe la propiedad .id
+          pacienteId: pacienteEncontrado.id, // TypeScript ahora sabe que esto es seguro
           profesionalId: profesionalSeleccionado.user_id,
           fecha: diaSeleccionado.fecha,
-          hora: horaSeleccionada
+          hora: horaSeleccionada,
+          tokenTurnstile // Enviamos el token para proteger la creación
         })
       })
       
       if (!res.ok) throw new Error()
       
-      // Si todo sale bien, mostramos la pantalla de éxito
       setPaso('exito')
     } catch (err) {
-      setError('Ocurrió un error al agendar. Esa hora podría ya estar ocupada, recarga e intenta de nuevo.')
+      setError('Ocurrió un error al agendar o no superaste la validación de seguridad. Intenta de nuevo.')
     } finally {
       setAgendando(false)
     }
@@ -281,12 +290,19 @@ export default function AgendarClient() {
                     </div>
                   </div>
                 )}
+                
+                <div className="flex justify-center my-4">
+                  <Turnstile
+                    siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
+                    onSuccess={(token) => setTokenTurnstile(token)}
+                  />
+                </div>
 
                 {/* 🌟 BOTÓN DE CONFIRMAR REAL 🌟 */}
                 <button 
-                  disabled={!horaSeleccionada || agendando}
+                  disabled={!horaSeleccionada || agendando || !tokenTurnstile}
                   onClick={confirmarCita}
-                  className="w-full mt-6 py-4 bg-emerald-500 rounded-xl font-black text-xs uppercase tracking-widest text-white shadow-md hover:bg-emerald-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full py-4 bg-emerald-500 rounded-xl font-black text-xs uppercase tracking-widest text-white shadow-md hover:bg-emerald-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {agendando ? <Loader2 className="animate-spin" size={18} /> : 'Confirmar Evaluación'}
                 </button>

@@ -5,10 +5,9 @@ import { Search, Loader2, Users, User, ChevronRight, ArrowLeft, CalendarDays, Id
 
 type Especialidad = { id: string; nombre: string; cantidadProfesionales: number }
 type Profesional = { id: string; user_id: string; nombre: string; apellido: string; especialidades: string[] }
-type Paciente = { id: string; nombre: string; apellido: string; rut: string; telefono: string | null; activo: boolean; motivo_deshabilitado: string | null }
+type Paciente = { id: string; nombre: string; apellido: string; rut: string; telefono: string | null; email?: string; activo: boolean; motivo_deshabilitado: string | null }
 type DiaDisponible = { fecha: string; diaNombre: string; diaNumero: number; slots: string[] }
 
-// Agregamos 'exito' a los pasos
 type Paso = 'inicio' | 'especialidades' | 'profesionalesPorEspecialidad' | 'profesionales' | 'documento' | 'fecha_hora' | 'exito'
 
 export default function AgendarClient() {
@@ -26,6 +25,9 @@ export default function AgendarClient() {
   const [documento, setDocumento] = useState('')
   const [buscando, setBuscando] = useState(false)
   const [pacienteEncontrado, setPacienteEncontrado] = useState<Paciente | null | 'no_encontrado'>(null)
+  
+  // Estado para capturar datos si el paciente es nuevo
+  const [datosNuevoPaciente, setDatosNuevoPaciente] = useState({ nombre: '', apellido: '', telefono: '', email: '' })
 
   const [diasDisponibles, setDiasDisponibles] = useState<DiaDisponible[]>([])
   const [diaSeleccionado, setDiaSeleccionado] = useState<DiaDisponible | null>(null)
@@ -66,16 +68,17 @@ export default function AgendarClient() {
       const res = await fetch('/api/buscar-paciente', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        // Eliminamos el token de aquí, el middleware de Vercel se encarga de proteger esta ruta
         body: JSON.stringify({ valor: documento, esOtroDocumento })
-        
       })
       const data = await res.json()
-      if (!data.paciente) setPacienteEncontrado('no_encontrado')
-      else if (!data.paciente.activo) {
+      if (!data.paciente) {
+        setPacienteEncontrado('no_encontrado')
+      } else if (!data.paciente.activo) {
         setError(data.paciente.motivo_deshabilitado || 'Contacta a la clínica para habilitar tu cuenta.')
         setPacienteEncontrado(null)
-      } else setPacienteEncontrado(data.paciente)
+      } else {
+        setPacienteEncontrado(data.paciente)
+      }
     } catch { setError('Ocurrió un error al buscar tu ficha.') } finally { setBuscando(false) }
   }
 
@@ -91,9 +94,7 @@ export default function AgendarClient() {
     } catch { setError("Error al cargar los horarios.") } finally { setCargando(false) }
   }
 
-  // --- 🌟 CORREGIDO: Confirmar Cita Real con TypeScript estricto y Token ---
   const confirmarCita = async () => {
-    // Aquí está la corrección que TypeScript pedía: "pacienteEncontrado === 'no_encontrado'"
     if (!pacienteEncontrado || pacienteEncontrado === 'no_encontrado' || !profesionalSeleccionado || !diaSeleccionado || !horaSeleccionada) return;
     
     if (!tokenTurnstile) {
@@ -109,19 +110,24 @@ export default function AgendarClient() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          pacienteId: pacienteEncontrado.id, // TypeScript ahora sabe que esto es seguro
+          pacienteId: pacienteEncontrado.id === 'NUEVO' ? null : pacienteEncontrado.id,
+          pacienteNuevo: pacienteEncontrado.id === 'NUEVO' ? pacienteEncontrado : null,
           profesionalId: profesionalSeleccionado.user_id,
           fecha: diaSeleccionado.fecha,
           hora: horaSeleccionada,
-          tokenTurnstile // Enviamos el token para proteger la creación
+          tokenTurnstile,
+          esOtroDocumento
         })
       })
       
-      if (!res.ok) throw new Error()
+      if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.error || 'Error al agendar')
+      }
       
       setPaso('exito')
-    } catch (err) {
-      setError('Ocurrió un error al agendar o no superaste la validación de seguridad. Intenta de nuevo.')
+    } catch (err: any) {
+      setError(err.message || 'Ocurrió un error al agendar. Esa hora podría ya estar ocupada, recarga e intenta de nuevo.')
     } finally {
       setAgendando(false)
     }
@@ -229,18 +235,56 @@ export default function AgendarClient() {
             ) : (
               <>
                 <div className="flex items-center gap-3">
-                  <input type="checkbox" id="otro-doc" checked={esOtroDocumento} onChange={(e) => { setEsOtroDocumento(e.target.checked); setDocumento(''); setError(''); setPacienteEncontrado(null); }} className="w-5 h-5 accent-[#C9A24B]" />
+                  <input type="checkbox" id="otro-doc" checked={esOtroDocumento} onChange={(e) => { setEsOtroDocumento(e.target.checked); setDocumento(''); setError(''); setPacienteEncontrado(null); setDatosNuevoPaciente({nombre:'', apellido:'', telefono:'', email:''}); }} className="w-5 h-5 accent-[#C9A24B]" />
                   <label htmlFor="otro-doc" className="text-sm font-bold text-slate-600 cursor-pointer">Soy extranjero / tengo otro tipo de documento</label>
                 </div>
+                
                 <div className="relative">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                  <input type="text" placeholder={esOtroDocumento ? 'Ingresa tu N° de documento' : 'Ingresa tu RUT (ej: 20791085-6)'} value={documento} onChange={(e) => { setDocumento(e.target.value); setError(''); setPacienteEncontrado(null); }} onKeyDown={(e) => e.key === 'Enter' && buscarPaciente()} className="w-full pl-11 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:border-[#C9A24B] transition-all" />
+                  <input type="text" placeholder={esOtroDocumento ? 'Ingresa tu N° de documento' : 'Ingresa tu RUT (ej: 20791085-6)'} value={documento} onChange={(e) => { setDocumento(e.target.value); setError(''); setPacienteEncontrado(null); }} onKeyDown={(e) => e.key === 'Enter' && !buscando && buscarPaciente()} className="w-full pl-11 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:border-[#C9A24B] transition-all" />
                 </div>
+                
                 {error && <p className="text-xs font-bold text-red-500">{error}</p>}
-                {pacienteEncontrado === 'no_encontrado' && <p className="text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 rounded-xl p-3">No encontramos tu ficha. Por favor contacta a la clínica para registrarte antes de agendar online.</p>}
-                <button onClick={buscarPaciente} disabled={buscando} className="w-full py-4 bg-[#C9A24B] rounded-xl font-black text-xs uppercase tracking-widest text-white shadow-md hover:bg-[#B38D3A] transition-all disabled:opacity-50 flex items-center justify-center gap-2">
-                  {buscando ? <Loader2 className="animate-spin" size={18} /> : 'Buscar mi ficha'}
-                </button>
+                
+                {/* 🌟 FORMULARIO PARA PACIENTE NUEVO 🌟 */}
+                {pacienteEncontrado === 'no_encontrado' ? (
+                  <div className="bg-amber-50 p-5 rounded-2xl border border-amber-200 space-y-4">
+                    <p className="text-sm font-bold text-amber-700">No encontramos tu ficha. Ingresa tus datos para registrarte y continuar.</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <input type="text" placeholder="Nombre" className="w-full p-4 bg-white border border-amber-200 rounded-xl font-bold text-sm outline-none focus:border-[#C9A24B] transition-all" value={datosNuevoPaciente.nombre} onChange={(e) => setDatosNuevoPaciente({...datosNuevoPaciente, nombre: e.target.value})} />
+                      <input type="text" placeholder="Apellido" className="w-full p-4 bg-white border border-amber-200 rounded-xl font-bold text-sm outline-none focus:border-[#C9A24B] transition-all" value={datosNuevoPaciente.apellido} onChange={(e) => setDatosNuevoPaciente({...datosNuevoPaciente, apellido: e.target.value})} />
+                      <input type="tel" placeholder="Teléfono (Ej: +569...)" className="w-full p-4 bg-white border border-amber-200 rounded-xl font-bold text-sm outline-none focus:border-[#C9A24B] transition-all" value={datosNuevoPaciente.telefono} onChange={(e) => setDatosNuevoPaciente({...datosNuevoPaciente, telefono: e.target.value})} />
+                      <input type="email" placeholder="Correo (Opcional)" className="w-full p-4 bg-white border border-amber-200 rounded-xl font-bold text-sm outline-none focus:border-[#C9A24B] transition-all" value={datosNuevoPaciente.email} onChange={(e) => setDatosNuevoPaciente({...datosNuevoPaciente, email: e.target.value})} />
+                    </div>
+                    <button 
+                      onClick={() => {
+                        if (!datosNuevoPaciente.nombre.trim() || !datosNuevoPaciente.apellido.trim() || !datosNuevoPaciente.telefono.trim()) {
+                           setError('Completa nombre, apellido y teléfono para continuar.');
+                           return;
+                        }
+                        setError('');
+                        setPacienteEncontrado({
+                           id: 'NUEVO',
+                           nombre: datosNuevoPaciente.nombre,
+                           apellido: datosNuevoPaciente.apellido,
+                           rut: documento,
+                           telefono: datosNuevoPaciente.telefono,
+                           email: datosNuevoPaciente.email,
+                           activo: true,
+                           motivo_deshabilitado: null
+                        });
+                        cargarHorarios();
+                      }} 
+                      className="w-full py-4 bg-[#C9A24B] rounded-xl font-black text-xs uppercase tracking-widest text-white shadow-md hover:bg-[#B38D3A] transition-all"
+                    >
+                      Registrarme y Elegir Horario
+                    </button>
+                  </div>
+                ) : (
+                  <button onClick={buscarPaciente} disabled={buscando || !documento.trim()} className="w-full py-4 bg-[#C9A24B] rounded-xl font-black text-xs uppercase tracking-widest text-white shadow-md hover:bg-[#B38D3A] transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+                    {buscando ? <Loader2 className="animate-spin" size={18} /> : 'Buscar mi ficha'}
+                  </button>
+                )}
               </>
             )}
           </div>
@@ -298,7 +342,6 @@ export default function AgendarClient() {
                   />
                 </div>
 
-                {/* 🌟 BOTÓN DE CONFIRMAR REAL 🌟 */}
                 <button 
                   disabled={!horaSeleccionada || agendando || !tokenTurnstile}
                   onClick={confirmarCita}

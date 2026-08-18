@@ -1,6 +1,18 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
+async function validarTurnstile(token: string) {
+  if (!process.env.TURNSTILE_SECRET_KEY) return true; 
+  
+  const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `secret=${process.env.TURNSTILE_SECRET_KEY}&response=${token}`
+  })
+  const data = await res.json()
+  return data.success
+}
+
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -16,7 +28,16 @@ function formatearRutChileno(valor: string): string {
 
 export async function POST(req: Request) {
   try {
-    const { valor, esOtroDocumento } = await req.json()
+    const { valor, esOtroDocumento, tokenTurnstile } = await req.json()
+
+    // 🛑 VALIDACIÓN ANTI-SPAM
+    if (!tokenTurnstile) {
+        return NextResponse.json({ error: 'Validación de seguridad requerida' }, { status: 403 })
+    }
+    const esHumano = await validarTurnstile(tokenTurnstile)
+    if (!esHumano) {
+        return NextResponse.json({ error: 'Fallo en la validación de seguridad de Cloudflare' }, { status: 403 })
+    }
 
     if (!valor || !valor.trim()) {
       return NextResponse.json({ error: 'Debes ingresar tu documento' }, { status: 400 })

@@ -3,7 +3,6 @@ import { createClient } from '@supabase/supabase-js'
 
 // Función que valida que el usuario no es un Robot usando Cloudflare
 async function validarTurnstile(token: string) {
-  // Si no has configurado tu Secret Key, asume que es verdadero (para que no te bloquee probando en local)
   if (!process.env.TURNSTILE_SECRET_KEY) return true; 
   
   const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
@@ -15,6 +14,14 @@ async function validarTurnstile(token: string) {
   return data.success
 }
 
+function formatearRutChileno(valor: string): string {
+  const limpio = valor.replace(/[^0-9kK]/g, '').toUpperCase()
+  if (limpio.length < 2) return limpio
+  const cuerpo = limpio.slice(0, -1)
+  const dv = limpio.slice(-1)
+  return `${cuerpo}-${dv}`
+}
+
 export async function POST(req: Request) {
   try {
     const supabaseAdmin = createClient(
@@ -22,10 +29,10 @@ export async function POST(req: Request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    // Nota que recibimos el tokenTurnstile desde el cliente
-    const { pacienteId, profesionalId, fecha, hora, tokenTurnstile } = await req.json()
+    const { pacienteId, pacienteNuevo, profesionalId, fecha, hora, tokenTurnstile, esOtroDocumento } = await req.json()
 
-    if (!pacienteId || !profesionalId || !fecha || !hora) {
+    // Verificamos que envíen al menos un ID existente o los datos del paciente nuevo
+    if ((!pacienteId && !pacienteNuevo) || !profesionalId || !fecha || !hora) {
       return NextResponse.json({ error: 'Faltan datos obligatorios' }, { status: 400 })
     }
 
@@ -36,24 +43,47 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Validación de seguridad fallida' }, { status: 403 })
         }
     } else {
-        // Si no mandan token, rechazamos la petición por seguridad
         return NextResponse.json({ error: 'Token de seguridad requerido' }, { status: 403 })
     }
 
-    // 2. Armar la hora de inicio exacta
+    let finalPacienteId = pacienteId;
+
+    // 🛑 2. SI ES PACIENTE NUEVO, LO CREAMOS PRIMERO
+    if (pacienteNuevo) {
+       const rutFinal = esOtroDocumento ? pacienteNuevo.rut.trim() : formatearRutChileno(pacienteNuevo.rut.trim());
+       
+       const { data: pData, error: pError } = await supabaseAdmin.from('pacientes').insert([{
+           nombre: pacienteNuevo.nombre.toUpperCase().trim(),
+           apellido: pacienteNuevo.apellido.toUpperCase().trim(),
+           rut: rutFinal,
+           telefono: pacienteNuevo.telefono,
+           email: pacienteNuevo.email,
+           activo: true
+       }]).select('id').single();
+
+       if (pError) {
+          if (pError.code === '23505') { // Código de error SQL para Violación de Unicidad (RUT repetido)
+             return NextResponse.json({ error: 'El documento ya está registrado. Por favor retrocede y búscalo nuevamente.' }, { status: 400 })
+          }
+          throw pError;
+       }
+       finalPacienteId = pData.id;
+    }
+
+    // 3. Armar la hora de inicio exacta
     const inicioTimestamp = `${fecha}T${hora}:00`
 
-    // 3. Calcular la hora de fin (15 minutos para agendamiento online)
+    // 4. Calcular la hora de fin (15 minutos para agendamiento online)
     const [h, m] = hora.split(':').map(Number)
     const finDate = new Date(0, 0, 0, h, m + 15)
     const finHora = `${String(finDate.getHours()).padStart(2, '0')}:${String(finDate.getMinutes()).padStart(2, '0')}:00`
     const finTimestamp = `${fecha}T${finHora}`
 
-    // 4. Insertar en la base de datos
+    // 5. Insertar la cita asignada al paciente final (nuevo o existente)
     const { data, error } = await supabaseAdmin
       .from('citas')
       .insert({
-        paciente_id: pacienteId,
+        paciente_id: finalPacienteId,
         profesional_id: profesionalId,
         inicio: inicioTimestamp,
         fin: finTimestamp,

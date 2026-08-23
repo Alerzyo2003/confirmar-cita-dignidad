@@ -1,7 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { Turnstile } from '@marsidev/react-turnstile'
-import { Search, Loader2, Users, User, ChevronRight, ArrowLeft, CalendarDays, IdCard, CheckCircle, AlertTriangle, Globe } from 'lucide-react'
+import { Search, Loader2, Users, User, ChevronRight, ArrowLeft, CalendarDays, IdCard, CheckCircle } from 'lucide-react'
 
 type Especialidad = { id: string; nombre: string; cantidadProfesionales: number }
 type Profesional = { id: string; user_id: string; nombre: string; apellido: string; especialidades: string[] }
@@ -32,9 +31,6 @@ export default function AgendarClient() {
   const [diaSeleccionado, setDiaSeleccionado] = useState<DiaDisponible | null>(null)
   const [horaSeleccionada, setHoraSeleccionada] = useState<string | null>(null)
   
-  // TOKEN DE CLOUDFLARE
-  const [tokenTurnstile, setTokenTurnstile] = useState<string | null>(null)
-
   const irAEspecialidades = async () => {
     setPaso('especialidades'); setCargando(true)
     try {
@@ -65,15 +61,13 @@ export default function AgendarClient() {
   const buscarPaciente = async () => {
     setError(''); 
     if (!documento.trim()) return setError('Ingresa tu documento')
-    if (!tokenTurnstile) return setError('Por favor espera la validación de seguridad de Cloudflare.')
     
     setBuscando(true)
     try {
       const res = await fetch('/api/buscar-paciente', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        // Enviamos el token para proteger la búsqueda
-        body: JSON.stringify({ valor: documento, esOtroDocumento, tokenTurnstile })
+        body: JSON.stringify({ valor: documento, esOtroDocumento })
       })
       
       const data = await res.json()
@@ -109,7 +103,6 @@ export default function AgendarClient() {
 
   const confirmarCita = async () => {
     if (!pacienteEncontrado || pacienteEncontrado === 'no_encontrado' || !profesionalSeleccionado || !diaSeleccionado || !horaSeleccionada) return;
-    if (!tokenTurnstile) return setError('Validación de seguridad expirada. Recarga la página.');
 
     setAgendando(true)
     setError('')
@@ -124,7 +117,6 @@ export default function AgendarClient() {
           profesionalId: profesionalSeleccionado.user_id,
           fecha: diaSeleccionado.fecha,
           hora: horaSeleccionada,
-          tokenTurnstile, // El backend lo exige para crear la cita y al usuario nuevo
           esOtroDocumento
         })
       })
@@ -224,14 +216,6 @@ export default function AgendarClient() {
               <p className="font-black uppercase text-slate-800 text-base mt-1">Dr. {profesionalSeleccionado?.nombre} {profesionalSeleccionado?.apellido}</p>
             </div>
 
-            {/* WIDGET DE CLOUDFLARE EN LA BÚSQUEDA */}
-            <div className="flex justify-center bg-slate-50 p-2 rounded-xl border border-slate-100">
-               <Turnstile
-                 siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
-                 onSuccess={(token) => setTokenTurnstile(token)}
-               />
-            </div>
-
             {pacienteEncontrado && pacienteEncontrado !== 'no_encontrado' ? (
               <div className="space-y-4">
                 <div className="p-5 rounded-2xl border border-emerald-200 bg-emerald-50 flex items-center gap-3">
@@ -258,7 +242,7 @@ export default function AgendarClient() {
                 
                 <div className="relative">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                  <input type="text" placeholder={esOtroDocumento ? 'Ingresa tu N° de documento' : 'Ingresa tu RUT (ej: 20791085-6)'} value={documento} onChange={(e) => { setDocumento(e.target.value); setError(''); setPacienteEncontrado(null); }} onKeyDown={(e) => e.key === 'Enter' && !buscando && tokenTurnstile && buscarPaciente()} className="w-full pl-11 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:border-[#C9A24B] transition-all" />
+                  <input type="text" placeholder={esOtroDocumento ? 'Ingresa tu N° de documento' : 'Ingresa tu RUT (ej: 20791085-6)'} value={documento} onChange={(e) => { setDocumento(e.target.value); setError(''); setPacienteEncontrado(null); }} onKeyDown={(e) => e.key === 'Enter' && !buscando && buscarPaciente()} className="w-full pl-11 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:border-[#C9A24B] transition-all" />
                 </div>
                 
                 {error && <p className="text-xs font-bold text-red-500">{error}</p>}
@@ -297,8 +281,8 @@ export default function AgendarClient() {
                     </button>
                   </div>
                 ) : (
-                  <button onClick={buscarPaciente} disabled={buscando || !documento.trim() || !tokenTurnstile} className="w-full py-4 bg-[#C9A24B] rounded-xl font-black text-xs uppercase tracking-widest text-white shadow-md hover:bg-[#B38D3A] transition-all disabled:opacity-50 flex items-center justify-center gap-2">
-                    {buscando ? <Loader2 className="animate-spin" size={18} /> : !tokenTurnstile ? 'Validando conexión...' : 'Buscar mi ficha'}
+                  <button onClick={buscarPaciente} disabled={buscando || !documento.trim()} className="w-full py-4 bg-[#C9A24B] rounded-xl font-black text-xs uppercase tracking-widest text-white shadow-md hover:bg-[#B38D3A] transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+                    {buscando ? <Loader2 className="animate-spin" size={18} /> : 'Buscar mi ficha'}
                   </button>
                 )}
               </>
@@ -352,7 +336,7 @@ export default function AgendarClient() {
                 )}
                 
                 <button 
-                  disabled={!horaSeleccionada || agendando || !tokenTurnstile}
+                  disabled={!horaSeleccionada || agendando}
                   onClick={confirmarCita}
                   className="w-full mt-6 py-4 bg-emerald-500 rounded-xl font-black text-xs uppercase tracking-widest text-white shadow-md hover:bg-emerald-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >

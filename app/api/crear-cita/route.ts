@@ -15,6 +15,7 @@ async function validarTurnstile(token: string) {
 }
 
 function formatearRutChileno(valor: string): string {
+  if (!valor) return ''
   const limpio = valor.replace(/[^0-9kK]/g, '').toUpperCase()
   if (limpio.length < 2) return limpio
   const cuerpo = limpio.slice(0, -1)
@@ -37,37 +38,51 @@ export async function POST(req: Request) {
     }
 
     // 🛑 1. VALIDACIÓN ANTI-SPAM DE CLOUDFLARE
-    if (tokenTurnstile) {
-        const esHumano = await validarTurnstile(tokenTurnstile)
-        if (!esHumano) {
-            return NextResponse.json({ error: 'Validación de seguridad fallida' }, { status: 403 })
+    // Solo bloquea si existe la variable de entorno y no se manda el token.
+    if (process.env.TURNSTILE_SECRET_KEY) {
+        if (tokenTurnstile) {
+            const esHumano = await validarTurnstile(tokenTurnstile)
+            if (!esHumano) {
+                return NextResponse.json({ error: 'Validación de seguridad fallida' }, { status: 403 })
+            }
+        } else {
+            return NextResponse.json({ error: 'Falta validación de seguridad (Captcha requerido)' }, { status: 403 })
         }
-    } else {
-        return NextResponse.json({ error: 'Token de seguridad requerido' }, { status: 403 })
     }
 
     let finalPacienteId = pacienteId;
 
     // 🛑 2. SI ES PACIENTE NUEVO, LO CREAMOS PRIMERO
-    if (pacienteNuevo) {
+    if (!finalPacienteId && pacienteNuevo) {
        const rutFinal = esOtroDocumento ? pacienteNuevo.rut.trim() : formatearRutChileno(pacienteNuevo.rut.trim());
        
-       const { data: pData, error: pError } = await supabaseAdmin.from('pacientes').insert([{
-           nombre: pacienteNuevo.nombre.toUpperCase().trim(),
-           apellido: pacienteNuevo.apellido.toUpperCase().trim(),
-           rut: rutFinal,
-           telefono: pacienteNuevo.telefono,
-           email: pacienteNuevo.email,
-           activo: true
-       }]).select('id').single();
+       // Buscar si el paciente ya existe (evita el error 23505)
+       const { data: pacienteExistente } = await supabaseAdmin
+         .from('pacientes')
+         .select('id')
+         .eq('rut', rutFinal)
+         .single();
 
-       if (pError) {
-          if (pError.code === '23505') { // Código de error SQL para Violación de Unicidad (RUT repetido)
-             return NextResponse.json({ error: 'El documento ya está registrado. Por favor retrocede y búscalo nuevamente.' }, { status: 400 })
-          }
-          throw pError;
+       if (pacienteExistente) {
+           finalPacienteId = pacienteExistente.id;
+       } else {
+           // Insertar paciente nuevo usando Service Role para ignorar RLS
+           const { data: pData, error: pError } = await supabaseAdmin.from('pacientes').insert([{
+               nombre: pacienteNuevo.nombre.toUpperCase().trim(),
+               apellido: pacienteNuevo.apellido.toUpperCase().trim(),
+               rut: rutFinal,
+               telefono: pacienteNuevo.telefono,
+               email: pacienteNuevo.email,
+               extranjero: esOtroDocumento,
+               activo: true
+           }]).select('id').single();
+
+           if (pError) {
+              console.error("Error BD al insertar paciente:", pError);
+              throw new Error("No se pudo registrar al paciente en la base de datos.");
+           }
+           finalPacienteId = pData.id;
        }
-       finalPacienteId = pData.id;
     }
 
     // 3. Armar la hora de inicio exacta
@@ -89,12 +104,15 @@ export async function POST(req: Request) {
         fin: finTimestamp,
         motivo: 'Evaluación (Agendamiento Online)',
         estado: 'programada',
-        estado_confirmacion: 'pendiente' // Queda pendiente hasta que la apruebes en agenda
+        estado_confirmacion: 'pendiente' 
       })
       .select()
       .single()
 
-    if (error) throw error
+    if (error) {
+        console.error("Error BD al insertar cita:", error);
+        throw new Error("Ocurrió un error al intentar crear la cita en la agenda.");
+    }
 
     return NextResponse.json({ success: true, cita: data })
 

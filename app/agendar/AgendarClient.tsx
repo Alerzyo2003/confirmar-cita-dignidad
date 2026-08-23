@@ -25,7 +25,10 @@ export default function AgendarClient() {
   const [buscando, setBuscando] = useState(false)
   const [pacienteEncontrado, setPacienteEncontrado] = useState<Paciente | null | 'no_encontrado'>(null)
   
-  const [datosNuevoPaciente, setDatosNuevoPaciente] = useState({ nombre: '', apellido: '', telefono: '', email: '' })
+  // NUEVO: Estado para controlar si el usuario decidió crear la ficha manualmente
+  const [creandoNuevo, setCreandoNuevo] = useState(false)
+  // NUEVO: Se agregó el campo 'rut' al estado del nuevo paciente
+  const [datosNuevoPaciente, setDatosNuevoPaciente] = useState({ nombre: '', apellido: '', rut: '', telefono: '', email: '' })
 
   const [diasDisponibles, setDiasDisponibles] = useState<DiaDisponible[]>([])
   const [diaSeleccionado, setDiaSeleccionado] = useState<DiaDisponible | null>(null)
@@ -76,6 +79,8 @@ export default function AgendarClient() {
 
       if (!data.paciente) {
         setPacienteEncontrado('no_encontrado')
+        // Pre-cargamos el documento buscado en el formulario de registro
+        setDatosNuevoPaciente(prev => ({ ...prev, rut: documento }))
       } else if (!data.paciente.activo) {
         setError(data.paciente.motivo_deshabilitado || 'Contacta a la clínica para habilitar tu cuenta.')
         setPacienteEncontrado(null)
@@ -139,6 +144,7 @@ export default function AgendarClient() {
     if (paso === 'fecha_hora') { setPaso('documento') }
     else if (paso === 'documento') {
       setPacienteEncontrado(null)
+      setCreandoNuevo(false)
       setPaso(especialidadSeleccionada ? 'profesionalesPorEspecialidad' : 'profesionales')
     } else if (paso === 'profesionalesPorEspecialidad') { setPaso('especialidades') } 
     else if (paso === 'profesionales' || paso === 'especialidades') {
@@ -216,7 +222,7 @@ export default function AgendarClient() {
               <p className="font-black uppercase text-slate-800 text-base mt-1">Dr. {profesionalSeleccionado?.nombre} {profesionalSeleccionado?.apellido}</p>
             </div>
 
-            {pacienteEncontrado && pacienteEncontrado !== 'no_encontrado' ? (
+            {pacienteEncontrado && pacienteEncontrado !== 'no_encontrado' && !creandoNuevo ? (
               <div className="space-y-4">
                 <div className="p-5 rounded-2xl border border-emerald-200 bg-emerald-50 flex items-center gap-3">
                   <IdCard className="text-emerald-500 shrink-0" size={24} />
@@ -235,55 +241,83 @@ export default function AgendarClient() {
               </div>
             ) : (
               <>
-                <div className="flex items-center gap-3">
-                  <input type="checkbox" id="otro-doc" checked={esOtroDocumento} onChange={(e) => { setEsOtroDocumento(e.target.checked); setDocumento(''); setError(''); setPacienteEncontrado(null); setDatosNuevoPaciente({nombre:'', apellido:'', telefono:'', email:''}); }} className="w-5 h-5 accent-[#C9A24B]" />
-                  <label htmlFor="otro-doc" className="text-sm font-bold text-slate-600 cursor-pointer">Soy extranjero / tengo otro tipo de documento</label>
-                </div>
-                
-                <div className="relative">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                  <input type="text" placeholder={esOtroDocumento ? 'Ingresa tu N° de documento' : 'Ingresa tu RUT (ej: 20791085-6)'} value={documento} onChange={(e) => { setDocumento(e.target.value); setError(''); setPacienteEncontrado(null); }} onKeyDown={(e) => e.key === 'Enter' && !buscando && buscarPaciente()} className="w-full pl-11 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:border-[#C9A24B] transition-all" />
-                </div>
-                
-                {error && <p className="text-xs font-bold text-red-500">{error}</p>}
-                
-                {pacienteEncontrado === 'no_encontrado' ? (
+                {pacienteEncontrado === 'no_encontrado' || creandoNuevo ? (
                   <div className="bg-amber-50 p-5 rounded-2xl border border-amber-200 space-y-4">
-                    <p className="text-sm font-bold text-amber-700">No encontramos tu ficha. Ingresa tus datos para registrarte y continuar.</p>
+                    <p className="text-sm font-bold text-amber-700">
+                      {pacienteEncontrado === 'no_encontrado' ? 'No encontramos tu ficha.' : 'Registro de nuevo paciente.'} Ingresa tus datos para registrarte y continuar.
+                    </p>
+                    {error && <p className="text-xs font-bold text-red-500">{error}</p>}
+                    
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <input type="text" placeholder="Nombre" className="w-full p-4 bg-white border border-amber-200 rounded-xl font-bold text-sm outline-none focus:border-[#C9A24B] transition-all" value={datosNuevoPaciente.nombre} onChange={(e) => setDatosNuevoPaciente({...datosNuevoPaciente, nombre: e.target.value})} />
                       <input type="text" placeholder="Apellido" className="w-full p-4 bg-white border border-amber-200 rounded-xl font-bold text-sm outline-none focus:border-[#C9A24B] transition-all" value={datosNuevoPaciente.apellido} onChange={(e) => setDatosNuevoPaciente({...datosNuevoPaciente, apellido: e.target.value})} />
+                      <input type="text" placeholder="RUT o Documento" className="w-full p-4 bg-white border border-amber-200 rounded-xl font-bold text-sm outline-none focus:border-[#C9A24B] transition-all" value={datosNuevoPaciente.rut} onChange={(e) => setDatosNuevoPaciente({...datosNuevoPaciente, rut: e.target.value})} />
                       <input type="tel" placeholder="Teléfono (Ej: +569...)" className="w-full p-4 bg-white border border-amber-200 rounded-xl font-bold text-sm outline-none focus:border-[#C9A24B] transition-all" value={datosNuevoPaciente.telefono} onChange={(e) => setDatosNuevoPaciente({...datosNuevoPaciente, telefono: e.target.value})} />
-                      <input type="email" placeholder="Correo (Opcional)" className="w-full p-4 bg-white border border-amber-200 rounded-xl font-bold text-sm outline-none focus:border-[#C9A24B] transition-all" value={datosNuevoPaciente.email} onChange={(e) => setDatosNuevoPaciente({...datosNuevoPaciente, email: e.target.value})} />
+                      <input type="email" placeholder="Correo (Opcional)" className="w-full p-4 bg-white border border-amber-200 rounded-xl font-bold text-sm outline-none focus:border-[#C9A24B] transition-all sm:col-span-2" value={datosNuevoPaciente.email} onChange={(e) => setDatosNuevoPaciente({...datosNuevoPaciente, email: e.target.value})} />
                     </div>
-                    <button 
-                      onClick={() => {
-                        if (!datosNuevoPaciente.nombre.trim() || !datosNuevoPaciente.apellido.trim() || !datosNuevoPaciente.telefono.trim()) {
-                           setError('Completa nombre, apellido y teléfono para continuar.');
-                           return;
-                        }
-                        setError('');
-                        setPacienteEncontrado({
-                           id: 'NUEVO',
-                           nombre: datosNuevoPaciente.nombre,
-                           apellido: datosNuevoPaciente.apellido,
-                           rut: documento,
-                           telefono: datosNuevoPaciente.telefono,
-                           email: datosNuevoPaciente.email,
-                           activo: true,
-                           motivo_deshabilitado: null
-                        });
-                        cargarHorarios();
-                      }} 
-                      className="w-full py-4 bg-[#C9A24B] rounded-xl font-black text-xs uppercase tracking-widest text-white shadow-md hover:bg-[#B38D3A] transition-all"
-                    >
-                      Registrarme y Elegir Horario
-                    </button>
+                    
+                    <div className="flex gap-2">
+                      {creandoNuevo && (
+                        <button onClick={() => { setCreandoNuevo(false); setError(''); }} className="w-1/3 py-4 bg-white border border-slate-200 rounded-xl font-black text-xs uppercase text-slate-500 shadow-sm hover:bg-slate-50 transition-all">
+                          Cancelar
+                        </button>
+                      )}
+                      <button 
+                        onClick={() => {
+                          if (!datosNuevoPaciente.nombre.trim() || !datosNuevoPaciente.apellido.trim() || !datosNuevoPaciente.rut.trim() || !datosNuevoPaciente.telefono.trim()) {
+                             setError('Completa nombre, apellido, RUT y teléfono para continuar.');
+                             return;
+                          }
+                          setError('');
+                          setPacienteEncontrado({
+                             id: 'NUEVO',
+                             nombre: datosNuevoPaciente.nombre,
+                             apellido: datosNuevoPaciente.apellido,
+                             rut: datosNuevoPaciente.rut,
+                             telefono: datosNuevoPaciente.telefono,
+                             email: datosNuevoPaciente.email,
+                             activo: true,
+                             motivo_deshabilitado: null
+                          });
+                          cargarHorarios();
+                        }} 
+                        className="flex-1 py-4 bg-[#C9A24B] rounded-xl font-black text-xs uppercase tracking-widest text-white shadow-md hover:bg-[#B38D3A] transition-all"
+                      >
+                        Registrar y Elegir Hora
+                      </button>
+                    </div>
                   </div>
                 ) : (
-                  <button onClick={buscarPaciente} disabled={buscando || !documento.trim()} className="w-full py-4 bg-[#C9A24B] rounded-xl font-black text-xs uppercase tracking-widest text-white shadow-md hover:bg-[#B38D3A] transition-all disabled:opacity-50 flex items-center justify-center gap-2">
-                    {buscando ? <Loader2 className="animate-spin" size={18} /> : 'Buscar mi ficha'}
-                  </button>
+                  <>
+                    <div className="flex items-center gap-3">
+                      <input type="checkbox" id="otro-doc" checked={esOtroDocumento} onChange={(e) => { setEsOtroDocumento(e.target.checked); setDocumento(''); setError(''); setPacienteEncontrado(null); setDatosNuevoPaciente({nombre:'', apellido:'', rut:'', telefono:'', email:''}); }} className="w-5 h-5 accent-[#C9A24B]" />
+                      <label htmlFor="otro-doc" className="text-sm font-bold text-slate-600 cursor-pointer">Soy extranjero / tengo otro tipo de documento</label>
+                    </div>
+                    
+                    <div className="relative">
+                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                      <input type="text" placeholder={esOtroDocumento ? 'Ingresa tu N° de documento' : 'Ingresa tu RUT (ej: 20791085-6)'} value={documento} onChange={(e) => { setDocumento(e.target.value); setError(''); setPacienteEncontrado(null); }} onKeyDown={(e) => e.key === 'Enter' && !buscando && buscarPaciente()} className="w-full pl-11 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:border-[#C9A24B] transition-all" />
+                    </div>
+                    
+                    {error && <p className="text-xs font-bold text-red-500">{error}</p>}
+                    
+                    <button onClick={buscarPaciente} disabled={buscando || !documento.trim()} className="w-full py-4 bg-[#C9A24B] rounded-xl font-black text-xs uppercase tracking-widest text-white shadow-md hover:bg-[#B38D3A] transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+                      {buscando ? <Loader2 className="animate-spin" size={18} /> : 'Buscar mi ficha'}
+                    </button>
+
+                    <div className="text-center mt-4">
+                      <button 
+                        onClick={() => {
+                          setCreandoNuevo(true);
+                          setDatosNuevoPaciente(prev => ({...prev, rut: documento}));
+                          setError('');
+                        }} 
+                        className="text-xs font-bold text-[#C9A24B] hover:underline uppercase tracking-wider"
+                      >
+                        ¿No tienes ficha? Crea una nueva aquí
+                      </button>
+                    </div>
+                  </>
                 )}
               </>
             )}
@@ -347,7 +381,6 @@ export default function AgendarClient() {
           </div>
         )}
 
-        {/* 🌟 PASO 5: Éxito 🌟 */}
         {paso === 'exito' && (
           <div className="bg-white p-8 rounded-3xl border border-emerald-100 shadow-lg text-center space-y-6">
             <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto">

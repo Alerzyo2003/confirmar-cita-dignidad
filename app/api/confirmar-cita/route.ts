@@ -14,11 +14,17 @@ export async function POST(req: Request) {
     .from('citas')
     .update({ estado: 'confirmado_tel' })
     .eq('id', citaId)
-    // 🗑️ Restricción .in() eliminada
     .select()
     .maybeSingle()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error("🔥 ERROR SUPABASE:", error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  // Imprimimos la data en la terminal para asegurarnos de qué devolvió la BD
+  console.log("✅ CITA ACTUALIZADA EN BD:", data)
+
   if (!data) return NextResponse.json({ error: 'No se encontró la cita' }, { status: 404 })
 
   return NextResponse.json({ ok: true })

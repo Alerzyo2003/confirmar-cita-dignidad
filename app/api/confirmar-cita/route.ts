@@ -14,13 +14,12 @@ export async function POST(req: Request) {
     .from('citas')
     .update({ estado: 'confirmado_tel' })
     .eq('id', citaId)
-    // Usamos los estados exactos que existen en tu CSV:
-    .in('estado', ['programada', 'en_espera', 'en_atencion'])
+    // 🗑️ Restricción .in() eliminada
     .select()
     .maybeSingle()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  if (!data) return NextResponse.json({ error: 'La cita no se pudo confirmar por su estado actual' }, { status: 409 })
+  if (!data) return NextResponse.json({ error: 'No se encontró la cita' }, { status: 404 })
 
   return NextResponse.json({ ok: true })
 }

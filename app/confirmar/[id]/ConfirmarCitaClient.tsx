@@ -7,10 +7,22 @@ import {
   Loader2,
   MapPin,
   Clock3,
-  HeartPulse
 } from 'lucide-react'
 
-export default function ConfirmarCitaClient({ cita }: { cita: any }) {
+const NAVY = '#071B3A'
+const AMBER = '#FDB92B'
+const TEAL = '#0A9BB8'
+const GREEN = '#6B9A2A'
+const MAGENTA = '#B01C48'
+const SOFT = '#F6F9FD'
+
+const BRAND_BAR = [GREEN, TEAL, AMBER, MAGENTA]
+
+export default function ConfirmarCitaClient({
+  cita,
+}: {
+  cita: any
+}) {
   const [confirmado, setConfirmado] = useState(
     cita.estado === 'confirmado_tel'
   )
@@ -48,7 +60,9 @@ export default function ConfirmarCitaClient({ cita }: { cita: any }) {
         }),
       })
 
-      if (!res.ok) throw new Error()
+      if (!res.ok) {
+        throw new Error()
+      }
 
       setConfirmado(true)
     } catch {
@@ -61,204 +75,365 @@ export default function ConfirmarCitaClient({ cita }: { cita: any }) {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#f8fbff]">
+    <main className="relative min-h-screen overflow-hidden bg-[#EAF1F5]">
 
-      {/* =========================
-          FONDO - FACHADA CLÍNICA
-      ========================== */}
+      {/* =========================================================
+          FONDO - FACHADA DE LA CLÍNICA
+      ========================================================== */}
 
       <div
-        className="absolute inset-0 bg-cover bg-center scale-105"
+        aria-hidden="true"
+        className="fixed inset-0 z-0 bg-cover bg-center bg-no-repeat"
         style={{
           backgroundImage: "url('/fachada-clinica.png')",
         }}
       />
 
-      {/* Desenfoque para que el contenido destaque */}
-      <div className="absolute inset-0 backdrop-blur-[3px]" />
+      {/* Capa blanca moderada para mantener visible la fachada */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-0 z-0"
+        style={{
+          background:
+            'linear-gradient(135deg, rgba(255,255,255,0.48) 0%, rgba(255,255,255,0.38) 45%, rgba(246,249,253,0.52) 100%)',
+        }}
+      />
 
-      {/* Capa blanca */}
-      <div className="absolute inset-0 bg-white/78" />
+      {/* Tinte suave de marca */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-0 z-0"
+        style={{
+          background:
+            'linear-gradient(180deg, rgba(7,27,58,0.035) 0%, rgba(10,155,184,0.055) 100%)',
+        }}
+      />
 
-      {/* Gradiente Dignidad */}
-      <div className="absolute inset-0 bg-gradient-to-br from-white/95 via-white/75 to-[#dff1ff]/75" />
+      {/* =========================================================
+          DECORACIÓN DE FONDO
+      ========================================================== */}
 
-      {/* =========================
-          DECORACIONES
-      ========================== */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed -left-48 -top-48 z-0 h-[520px] w-[520px] rounded-full blur-3xl"
+        style={{
+          backgroundColor: 'rgba(10,155,184,0.07)',
+        }}
+      />
 
-      <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-[#0b3b82]/10 blur-3xl" />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed -bottom-52 -right-52 z-0 h-[580px] w-[580px] rounded-full blur-3xl"
+        style={{
+          backgroundColor: 'rgba(253,185,43,0.08)',
+        }}
+      />
 
-      <div className="absolute -bottom-40 -right-40 h-[500px] w-[500px] rounded-full bg-[#12a8e8]/15 blur-3xl" />
+      {/* =========================================================
+          BARRA SUPERIOR DE MARCA
+      ========================================================== */}
 
-      {/* Línea decorativa superior */}
-      <div className="absolute left-0 right-0 top-0 h-2 bg-gradient-to-r from-[#08295c] via-[#1478e8] to-[#20b8ed]" />
+      <div
+        aria-hidden="true"
+        className="fixed left-0 right-0 top-0 z-30 flex h-1.5"
+      >
+        {BRAND_BAR.map((color, index) => (
+          <div
+            key={index}
+            className="h-full flex-1"
+            style={{
+              backgroundColor: color,
+            }}
+          />
+        ))}
+      </div>
 
-      {/* =========================
-          CONTENIDO
-      ========================== */}
+      {/* =========================================================
+          CONTENIDO PRINCIPAL
+      ========================================================== */}
 
-      <div className="relative z-10 flex min-h-screen items-center justify-center px-5 py-10">
+      <div className="relative z-10 flex min-h-screen items-center justify-center px-4 py-3 sm:px-5">
 
-        <div className="w-full max-w-[520px]">
+        <div className="w-full max-w-[590px]">
 
-          {/* Logo / encabezado */}
-
-          <div className="mb-6 flex items-center justify-center gap-3">
-
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#092b61] shadow-lg">
-              <HeartPulse
-                size={25}
-                strokeWidth={2.3}
-                className="text-white"
-              />
-            </div>
-
-            <div className="text-left">
-              <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#6f86a5]">
-                Centro Médico y Dental
-              </p>
-
-              <p className="text-xl font-black tracking-tight text-[#092b61]">
-                DIGNIDAD
-              </p>
-            </div>
-
+          {/* Línea superior */}
+          <div className="mb-3 flex justify-center">
+            <div
+              className="h-1.5 w-[74px] rounded-full"
+              style={{
+                backgroundColor: AMBER,
+                boxShadow:
+                  '0 5px 18px rgba(253,185,43,0.35)',
+              }}
+            />
           </div>
 
-          {/* =========================
+          {/* =====================================================
               TARJETA PRINCIPAL
-          ========================== */}
+          ====================================================== */}
 
-          <div className="overflow-hidden rounded-[34px] border border-white/80 bg-white/95 shadow-[0_25px_70px_rgba(9,43,97,0.18)] backdrop-blur-xl">
+          <div
+            className="overflow-hidden rounded-[30px] border"
+            style={{
+              backgroundColor: 'rgba(255,255,255,0.97)',
+              borderColor: 'rgba(255,255,255,0.95)',
+              boxShadow:
+                '0 28px 80px rgba(7,27,58,0.23), 0 8px 25px rgba(7,27,58,0.09)',
+            }}
+          >
 
-            {/* Cabecera azul */}
+            {/* =================================================
+                HEADER AZUL
+            ================================================== */}
 
-            <div className="relative overflow-hidden bg-gradient-to-br from-[#08295c] via-[#0b4f9e] to-[#139fe0] px-8 pb-10 pt-9 text-center">
+            <div
+              className="relative overflow-hidden px-6 pb-6 pt-6 text-center sm:px-8"
+              style={{
+                background:
+                  'linear-gradient(135deg, #071B3A 0%, #0A315C 48%, #0A7597 100%)',
+              }}
+            >
 
-              {/* Decoraciones */}
+              {/* Círculos decorativos */}
 
-              <div className="absolute -right-20 -top-20 h-48 w-48 rounded-full border border-white/10" />
-              <div className="absolute -left-20 -bottom-24 h-52 w-52 rounded-full border border-white/10" />
+              <div
+                aria-hidden="true"
+                className="absolute -right-20 -top-24 h-52 w-52 rounded-full border border-white/10"
+              />
+
+              <div
+                aria-hidden="true"
+                className="absolute -bottom-28 -left-24 h-56 w-56 rounded-full border border-white/10"
+              />
+
+              <div
+                aria-hidden="true"
+                className="absolute right-11 top-11 h-2.5 w-2.5 rounded-full"
+                style={{
+                  backgroundColor: AMBER,
+                  boxShadow:
+                    '0 0 18px rgba(253,185,43,0.6)',
+                }}
+              />
 
               <div className="relative">
 
-                <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-[22px] bg-white/15 ring-1 ring-white/25 backdrop-blur-md">
+                {/* Icono */}
 
+                <div
+                  className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-[19px] border"
+                  style={{
+                    backgroundColor:
+                      'rgba(255,255,255,0.12)',
+                    borderColor:
+                      'rgba(255,255,255,0.22)',
+                    boxShadow:
+                      'inset 0 1px 0 rgba(255,255,255,0.15), 0 8px 25px rgba(0,0,0,0.12)',
+                  }}
+                >
                   <CalendarDays
-                    size={32}
+                    size={28}
                     strokeWidth={1.8}
                     className="text-white"
                   />
-
                 </div>
 
-                <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.3em] text-[#bfeaff]">
+                {/* Texto pequeño */}
+
+                <p
+                  className="mb-1.5 text-[9px] font-extrabold uppercase tracking-[0.30em]"
+                  style={{
+                    color: '#9FE0EB',
+                  }}
+                >
                   Confirmación de cita
                 </p>
 
-                <h1 className="text-3xl font-black tracking-tight text-white">
+                {/* Saludo */}
+
+                <h1 className="text-[26px] font-black tracking-tight text-white sm:text-[30px]">
                   ¡Hola {cita.pacientes?.nombre}!
                 </h1>
 
-                <div className="mx-auto mt-4 h-1 w-14 rounded-full bg-[#58d0ff]" />
+                {/* Línea */}
+
+                <div
+                  className="mx-auto mt-3 h-1 w-14 rounded-full"
+                  style={{
+                    backgroundColor: AMBER,
+                  }}
+                />
 
               </div>
-
             </div>
 
-            {/* =========================
-                INFORMACIÓN CITA
-            ========================== */}
+            {/* =================================================
+                CUERPO
+            ================================================== */}
 
-            <div className="px-7 py-7">
+            <div className="px-5 py-4 sm:px-7 sm:py-5">
 
-              <div className="rounded-3xl border border-[#e3edf8] bg-[#f8fbff] p-6">
+              {/* =================================================
+                  INFORMACIÓN DE LA CITA
+              ================================================== */}
 
-                <p className="mb-5 text-center text-sm font-semibold text-[#7184a0]">
+              <div
+                className="rounded-[22px] border p-4 sm:p-5"
+                style={{
+                  backgroundColor: '#F4F8FB',
+                  borderColor: '#DCE7EF',
+                  boxShadow:
+                    'inset 0 1px 0 rgba(255,255,255,0.9)',
+                }}
+              >
+
+                <p className="mb-3 text-center text-[13px] font-extrabold text-[#536A86]">
                   Tu cita está agendada para
                 </p>
 
-                {/* Fecha */}
+                {/* FECHA */}
 
-                <div className="mb-4 flex items-center gap-4 rounded-2xl bg-white p-4 shadow-sm">
+                <div
+                  className="mb-2 flex items-center gap-3 rounded-[16px] border p-3"
+                  style={{
+                    backgroundColor: '#FFFFFF',
+                    borderColor: '#EDF2F6',
+                    boxShadow:
+                      '0 5px 16px rgba(7,27,58,0.045)',
+                  }}
+                >
 
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#e8f4ff]">
+                  <div
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px]"
+                    style={{
+                      backgroundColor: '#E6F7FA',
+                    }}
+                  >
                     <CalendarDays
-                      size={21}
-                      className="text-[#1478e8]"
+                      size={20}
+                      strokeWidth={2}
+                      style={{
+                        color: TEAL,
+                      }}
                     />
                   </div>
 
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#8ba0bc]">
+                  <div className="min-w-0">
+
+                    <p className="text-[9px] font-extrabold uppercase tracking-[0.15em] text-[#8A9DB5]">
                       Fecha
                     </p>
 
-                    <p className="mt-0.5 text-sm font-black capitalize text-[#092b61]">
+                    <p className="mt-0.5 text-[15px] font-black capitalize text-[#071B3A]">
                       {fecha}
                     </p>
+
                   </div>
 
                 </div>
 
-                {/* Hora */}
+                {/* HORA */}
 
-                <div className="flex items-center gap-4 rounded-2xl bg-white p-4 shadow-sm">
+                <div
+                  className="flex items-center gap-3 rounded-[16px] border p-3"
+                  style={{
+                    backgroundColor: '#FFFFFF',
+                    borderColor: '#EDF2F6',
+                    boxShadow:
+                      '0 5px 16px rgba(7,27,58,0.045)',
+                  }}
+                >
 
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#e8f4ff]">
+                  <div
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px]"
+                    style={{
+                      backgroundColor: '#FFF7E3',
+                    }}
+                  >
                     <Clock3
-                      size={21}
-                      className="text-[#1478e8]"
+                      size={20}
+                      strokeWidth={2}
+                      style={{
+                        color: '#D69A00',
+                      }}
                     />
                   </div>
 
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#8ba0bc]">
+
+                    <p className="text-[9px] font-extrabold uppercase tracking-[0.15em] text-[#8A9DB5]">
                       Hora
                     </p>
 
-                    <p className="mt-0.5 text-lg font-black text-[#092b61]">
+                    <p className="mt-0.5 text-[18px] font-black text-[#071B3A]">
                       {hora} hrs
                     </p>
+
                   </div>
 
                 </div>
 
               </div>
 
-              {/* =========================
-                  ESTADOS
-              ========================== */}
+              {/* =================================================
+                  ESTADO / CONFIRMACIÓN
+              ================================================== */}
 
-              <div className="mt-6">
+              <div className="mt-4">
 
                 {yaVencida ? (
 
-                  <div className="rounded-2xl bg-slate-100 px-5 py-4 text-center">
-                    <p className="text-sm font-bold text-slate-500">
+                  <div className="rounded-[20px] border border-slate-200 bg-slate-50 px-5 py-4 text-center">
+
+                    <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-slate-200">
+                      <CalendarDays
+                        size={19}
+                        className="text-slate-500"
+                      />
+                    </div>
+
+                    <p className="text-sm font-extrabold text-slate-500">
                       Esta cita ya no está vigente.
                     </p>
+
                   </div>
 
                 ) : confirmado ? (
 
-                  <div className="rounded-3xl border border-emerald-100 bg-emerald-50 px-6 py-6 text-center">
+                  <div
+                    className="rounded-[21px] border px-5 py-4 text-center"
+                    style={{
+                      backgroundColor: '#F0F9E9',
+                      borderColor: '#D9ECC8',
+                    }}
+                  >
 
-                    <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100">
+                    <div
+                      className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full"
+                      style={{
+                        backgroundColor: '#DFF0CF',
+                      }}
+                    >
                       <CheckCircle2
-                        size={31}
+                        size={27}
                         strokeWidth={2.3}
-                        className="text-emerald-600"
+                        style={{
+                          color: GREEN,
+                        }}
                       />
                     </div>
 
-                    <p className="text-lg font-black uppercase tracking-tight text-emerald-700">
+                    <p
+                      className="text-[17px] font-black uppercase tracking-tight"
+                      style={{
+                        color: GREEN,
+                      }}
+                    >
                       ¡Cita confirmada!
                     </p>
 
-                    <p className="mt-1 text-xs font-medium text-emerald-600">
-                      Te esperamos en Centro Médico y Dental Dignidad.
+                    <p className="mt-0.5 text-[11px] font-semibold text-[#71915A]">
+                      Te esperamos en la clínica.
                     </p>
 
                   </div>
@@ -266,20 +441,37 @@ export default function ConfirmarCitaClient({ cita }: { cita: any }) {
                 ) : (
 
                   <button
+                    type="button"
                     onClick={confirmar}
                     disabled={loading}
-                    className="group relative w-full overflow-hidden rounded-2xl bg-gradient-to-r from-[#0867df] to-[#139fe0] py-4 font-black uppercase tracking-[0.12em] text-white shadow-[0_12px_30px_rgba(20,120,232,0.28)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_16px_35px_rgba(20,120,232,0.35)] disabled:cursor-not-allowed disabled:opacity-60"
+                    className="group relative w-full overflow-hidden rounded-[17px] py-3 font-black uppercase tracking-[0.11em] text-white transition-all duration-300 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                    style={{
+                      background:
+                        'linear-gradient(100deg, #071B3A 0%, #0A526F 52%, #0A9BB8 100%)',
+                      boxShadow:
+                        '0 12px 28px rgba(7,27,58,0.20)',
+                    }}
                   >
 
-                    <span className="relative flex items-center justify-center gap-2">
+                    {/* Brillo */}
+
+                    <span
+                      aria-hidden="true"
+                      className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-700 group-hover:translate-x-full"
+                    />
+
+                    <span className="relative flex items-center justify-center gap-2 text-[13px]">
 
                       {loading ? (
                         <Loader2
                           className="animate-spin"
-                          size={19}
+                          size={18}
                         />
                       ) : (
-                        <CheckCircle2 size={19} />
+                        <CheckCircle2
+                          size={18}
+                          strokeWidth={2.2}
+                        />
                       )}
 
                       {loading
@@ -294,31 +486,39 @@ export default function ConfirmarCitaClient({ cita }: { cita: any }) {
 
               </div>
 
-              {/* =========================
+              {/* =================================================
                   UBICACIÓN
-              ========================== */}
+              ================================================== */}
 
-              <div className="mt-6 flex items-start gap-3 border-t border-slate-100 pt-5">
+              <div className="mt-4 flex items-start gap-3 border-t border-[#E8EEF3] pt-3">
 
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#fff7e6]">
+                <div
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px]"
+                  style={{
+                    backgroundColor: '#FBEAF0',
+                  }}
+                >
                   <MapPin
                     size={17}
-                    className="text-[#c9a24b]"
+                    strokeWidth={2}
+                    style={{
+                      color: MAGENTA,
+                    }}
                   />
                 </div>
 
                 <div>
 
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#8ba0bc]">
+                  <p className="text-[9px] font-extrabold uppercase tracking-[0.15em] text-[#8A9DB5]">
                     Ubicación
                   </p>
 
-                  <p className="mt-0.5 text-xs font-bold text-[#092b61]">
-                    Centro Médico y Dental Dignidad
+                  <p className="mt-0.5 text-[13px] font-black text-[#071B3A]">
+                    Avenida Venancia Leiva 1871
                   </p>
 
-                  <p className="text-xs text-slate-500">
-                    Av. Venancia Leiva 1871, La Pintana
+                  <p className="text-[11px] font-semibold text-slate-500">
+                    La Pintana, Santiago
                   </p>
 
                 </div>
@@ -327,11 +527,29 @@ export default function ConfirmarCitaClient({ cita }: { cita: any }) {
 
             </div>
 
+            {/* =================================================
+                BARRA INFERIOR DE MARCA
+            ================================================== */}
+
+            <div className="flex h-1">
+              {BRAND_BAR.map((color, index) => (
+                <div
+                  key={index}
+                  className="flex-1"
+                  style={{
+                    backgroundColor: color,
+                  }}
+                />
+              ))}
+            </div>
+
           </div>
 
-          {/* Footer */}
+          {/* =====================================================
+              FOOTER
+          ====================================================== */}
 
-          <p className="mt-6 text-center text-[10px] font-bold uppercase tracking-[0.2em] text-[#7890ad]">
+          <p className="mt-2 text-center text-[9px] font-extrabold uppercase tracking-[0.18em] text-[#627994]">
             Cuidamos tu salud, cuidamos tu sonrisa.
           </p>
 

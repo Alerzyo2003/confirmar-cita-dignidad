@@ -35,6 +35,12 @@ const SOFT = '#F6F9FD'
 const BORDER = '#E3EAF2'
 const BRAND_BAR = [GREEN, TEAL, AMBER, MAGENTA]
 
+const EXCLUDED_PROFESSIONALS = [
+  '2680b928-3eab-487b-bd66-b02428a290ec', // Doctor Test
+  'ae53e9c9-e136-4d38-b68e-52183bd80987', // Doctor Radiografia
+  'e2237217-eaf0-4f0f-be2a-fb0c0fbf1896', // Laboratorio
+]
+
 const EASE = [0.22, 1, 0.36, 1] as const
 
 type Especialidad = { id: string; nombre: string; cantidadProfesionales: number }
@@ -156,7 +162,10 @@ export default function AgendarClient() {
     try {
       const res = await fetch('/api/profesionales-publico')
       if (!res.ok) throw new Error()
-      setProfesionales(await res.json())
+      const data = await res.json()
+      setProfesionales(data.filter((p: Profesional) => 
+        !EXCLUDED_PROFESSIONALS.includes(p.id) && !EXCLUDED_PROFESSIONALS.includes(p.user_id)
+      ))
     } catch {
       setProfesionales([])
       setError('No pudimos cargar los profesionales.')
@@ -173,7 +182,10 @@ export default function AgendarClient() {
     try {
       const res = await fetch(`/api/profesionales-publico?especialidadId=${esp.id}`)
       if (!res.ok) throw new Error()
-      setProfesionales(await res.json())
+      const data = await res.json()
+      setProfesionales(data.filter((p: Profesional) => 
+        !EXCLUDED_PROFESSIONALS.includes(p.id) && !EXCLUDED_PROFESSIONALS.includes(p.user_id)
+      ))
     } catch {
       setProfesionales([])
       setError('No pudimos cargar los profesionales de esta especialidad.')
@@ -280,7 +292,6 @@ export default function AgendarClient() {
 
   return (
     <main className={`${mainFont.className} relative h-[100dvh] w-full overflow-hidden bg-[#071B3A]`}>
-      {/* Fondo fijo: nunca cambia su encuadre al cambiar de paso. */}
       <div
         aria-hidden="true"
         className="fixed inset-0 z-0 bg-cover bg-center bg-no-repeat"
@@ -611,7 +622,7 @@ export default function AgendarClient() {
                       ) : (
                         <div>
                           <p className="text-sm font-black text-[#071B3A]">Días disponibles</p>
-<div className="mt-3">
+                          <div className="mt-3">
                             <div
                               className="flex snap-x gap-2 overflow-x-auto pb-3 pr-1"
                               style={{

@@ -33,6 +33,9 @@ export default function ConfirmarCitaClient({
 
   const [loading, setLoading] = useState(false)
 
+  // Las citas creadas desde /agendar llevan este motivo (ver app/api/crear-cita)
+  const esAgendamientoOnline = String(cita.motivo || '').toLowerCase().includes('agendamiento online')
+
   const fecha = new Date(cita.inicio).toLocaleDateString('es-CL', {
     weekday: 'long',
     day: 'numeric',
@@ -374,6 +377,25 @@ export default function ConfirmarCitaClient({
                 </div>
 
               </div>
+
+              {/* =================================================
+                  AVISO: CITAS AGENDADAS ONLINE = SOLO EVALUACIÓN
+              ================================================== */}
+
+              {esAgendamientoOnline && !yaVencida && (
+                <div
+                  className="mt-4 rounded-[18px] border-2 px-4 py-3.5 text-left"
+                  style={{ borderColor: `${MAGENTA}55`, backgroundColor: `${MAGENTA}0A` }}
+                >
+                  <p className="text-[13px] font-black" style={{ color: MAGENTA }}>
+                    Importante: esta hora es solo para evaluación (15 min)
+                  </p>
+                  <p className="mt-1 text-[12px] font-semibold leading-relaxed text-slate-600">
+                    Si la agendaste para algo que no es una evaluación (por ejemplo, continuar un tratamiento),
+                    tu hora <b className="text-[#071B3A]">queda anulada</b> y no podrás ser atendido en ese horario.
+                  </p>
+                </div>
+              )}
 
               {/* =================================================
                   ESTADO / CONFIRMACIÓN

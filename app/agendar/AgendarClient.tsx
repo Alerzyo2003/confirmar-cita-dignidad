@@ -51,6 +51,9 @@ const DURACION_EVALUACION_MIN = 15
 const WHATSAPP_CLINICA = '56966467641'
 const WHATSAPP_CLINICA_LABEL = '+56 9 6646 7641'
 
+const TEXTO_ANULACION =
+  'Si agendas esta hora para algo que no es una evaluación (por ejemplo, continuar un tratamiento), al llegar a la clínica tu hora quedará anulada.'
+
 function linkWhatsApp(mensaje: string) {
   return `https://wa.me/${WHATSAPP_CLINICA}?text=${encodeURIComponent(mensaje)}`
 }
@@ -799,6 +802,13 @@ export default function AgendarClient() {
                         </p>
                       </div>
 
+                      <div className="mt-4 flex items-start gap-3 rounded-[18px] border-2 p-4 text-left" style={{ borderColor: `${MAGENTA}55`, backgroundColor: `${MAGENTA}0A` }}>
+                        <TriangleAlert size={20} className="mt-0.5 shrink-0" style={{ color: MAGENTA }} />
+                        <p className="text-[13px] font-semibold leading-relaxed text-slate-600">
+                          <span className="font-black" style={{ color: MAGENTA }}>Importante:</span> {TEXTO_ANULACION}
+                        </p>
+                      </div>
+
                       <a
                         href={linkWhatsApp(
                           `Hola, agendé una evaluación online para el ${diaSeleccionado?.fecha ?? ''} a las ${horaSeleccionada ?? ''} con Dr. ${profesionalSeleccionado?.nombre ?? ''} ${profesionalSeleccionado?.apellido ?? ''}. ¿Me la pueden confirmar?`
@@ -879,6 +889,9 @@ function AvisoInicial({ onAceptar }: { onAceptar: () => void }) {
           <div className="mt-5 rounded-2xl border p-3.5 text-[13px] font-semibold leading-relaxed text-slate-600" style={{ borderColor: `${MAGENTA}40`, backgroundColor: `${MAGENTA}08` }}>
             <span className="font-black" style={{ color: MAGENTA }}>¿Ya estás en tratamiento?</span>{' '}
             Para seguir tu tratamiento no uses esta página: escríbenos por WhatsApp.
+            <p className="mt-2 font-bold text-[#071B3A]">
+              <span className="font-black" style={{ color: MAGENTA }}>Ojo:</span> {TEXTO_ANULACION}
+            </p>
           </div>
 
           <PrimaryButton color={AMBER} onClick={onAceptar} className="mt-5">
@@ -936,6 +949,9 @@ function EvaluationNotice({ compact = false }: { compact?: boolean }) {
             {compact ? `Dura ${DURACION_EVALUACION_MIN} minutos. ` : ''}
             Tu cita queda <b>pendiente</b> hasta que la clínica la valide por <b>WhatsApp</b>.
           </p>
+          <p className="mt-1">
+            Si no es para evaluación, tu hora <b style={{ color: MAGENTA }}>queda anulada</b>.
+          </p>
         </div>
       </div>
     </div>
@@ -969,6 +985,9 @@ function ExistingTreatmentReminder({
           <p className="mt-1 text-slate-600">
             Si quieres una hora para seguir tu tratamiento, escríbenos por WhatsApp.
           </p>
+          <p className="mt-1 font-bold text-[#071B3A]">
+            Si agendas aquí para continuar tu tratamiento, al llegar a la clínica tu hora quedará <span style={{ color: MAGENTA }}>anulada</span>.
+          </p>
           <a
             href={linkWhatsApp('Hola, soy paciente de la clínica y quiero agendar una hora para continuar mi tratamiento.')}
             target="_blank"
@@ -988,7 +1007,7 @@ function ExistingTreatmentReminder({
           onChange={(e) => onChange(e.target.checked)}
           className="mt-0.5 h-5 w-5 shrink-0 rounded accent-[#B01C48]"
         />
-        Entiendo que esta hora es solo para una evaluación de {DURACION_EVALUACION_MIN} minutos y que debe ser confirmada por la clínica vía WhatsApp.
+        Entiendo que esta hora es solo para una evaluación de {DURACION_EVALUACION_MIN} minutos, que debe ser confirmada por la clínica vía WhatsApp y que, si no es para evaluación, quedará anulada.
       </label>
     </div>
   )

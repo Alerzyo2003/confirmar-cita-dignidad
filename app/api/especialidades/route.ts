@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { atiendeEspecialidadExtra } from '@/lib/especialidadesExtra'
 
 // 1. Forzamos a Next.js a que no guarde esto en caché estática
 export const dynamic = 'force-dynamic'
@@ -24,7 +25,7 @@ export async function GET(req: Request) {
 
     const { data: profesionales, error: errPro } = await supabaseAdmin
       .from('profesionales')
-      .select('id, especialidad_id')
+      .select('id, nombre, apellido, especialidad_id')
       .eq('activo', true)
 
     if (errPro) {
@@ -32,15 +33,13 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: errPro.message }, { status: 500 })
     }
 
-    const conteo: Record<string, number> = {}
-    profesionales?.forEach(p => {
-      if (p.especialidad_id) conteo[p.especialidad_id] = (conteo[p.especialidad_id] || 0) + 1
-    })
-
     const resultado = (especialidades || []).map(e => ({
       id: e.id,
       nombre: e.nombre,
-      cantidadProfesionales: conteo[e.id] || 0
+      // Cuenta la especialidad principal + las adicionales (lib/especialidadesExtra.ts), sin duplicar
+      cantidadProfesionales: (profesionales || []).filter(p =>
+        p.especialidad_id === e.id || atiendeEspecialidadExtra(p.nombre, p.apellido, e.nombre)
+      ).length
     }))
 
     return NextResponse.json(resultado)

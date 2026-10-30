@@ -122,6 +122,7 @@ function SectionTitle({ eyebrow, title, description }: { eyebrow: string; title:
 }
 
 export default function AgendarClient() {
+  const [avisoAceptado, setAvisoAceptado] = useState(false)
   const [paso, setPaso] = useState<Paso>('inicio')
   const [cargando, setCargando] = useState(false)
   const [agendando, setAgendando] = useState(false)
@@ -370,7 +371,7 @@ export default function AgendarClient() {
                     />
 
                     <div className="mt-5">
-                      <EvaluationNotice />
+                      <EvaluationNotice compact />
                     </div>
 
                     <div className="mt-6 grid gap-3">
@@ -821,7 +822,81 @@ export default function AgendarClient() {
           </div>
         </section>
       </div>
+
+      <AnimatePresence>
+        {!avisoAceptado && <AvisoInicial onAceptar={() => setAvisoAceptado(true)} />}
+      </AnimatePresence>
     </main>
+  )
+}
+
+// Aviso que aparece antes de todo: la reserva online es SOLO para evaluación
+function AvisoInicial({ onAceptar }: { onAceptar: () => void }) {
+  const puntos = [
+    `Dura ${DURACION_EVALUACION_MIN} minutos y es gratuita.`,
+    'El profesional revisa tu caso y te entrega un presupuesto.',
+    'En esta hora no se realizan ni se continúan tratamientos.',
+    'Tu hora queda pendiente hasta que la clínica la valide contigo por WhatsApp.',
+  ]
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#071B3A]/70 p-4 backdrop-blur-sm"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.25 }}
+    >
+      <motion.div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="aviso-evaluacion-titulo"
+        className="max-h-[calc(100dvh-32px)] w-full max-w-[440px] overflow-y-auto rounded-[26px] bg-white shadow-[0_28px_90px_-25px_rgba(0,0,0,0.6)]"
+        initial={{ opacity: 0, y: 18, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 10, scale: 0.98 }}
+        transition={{ duration: 0.35, ease: EASE }}
+      >
+        <BrandBar />
+        <div className="p-6">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full" style={{ backgroundColor: `${AMBER}22`, color: '#B8860B' }}>
+            <TriangleAlert size={32} />
+          </div>
+          <p className="mt-4 text-center text-[11px] font-extrabold uppercase tracking-[0.18em] text-[#B8860B]">Importante · Antes de agendar</p>
+          <h2 id="aviso-evaluacion-titulo" className="mt-1 text-center text-[26px] font-black leading-tight tracking-tight text-[#071B3A]">
+            Esta reserva es solo para <span className="underline decoration-[#FDB92B] decoration-4 underline-offset-4">EVALUACIÓN</span>
+          </h2>
+
+          <ul className="mt-5 space-y-2.5">
+            {puntos.map((punto) => (
+              <li key={punto} className="flex items-start gap-2.5 text-sm font-semibold leading-relaxed text-slate-600">
+                <span className="mt-[7px] h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: TEAL }} />
+                {punto}
+              </li>
+            ))}
+          </ul>
+
+          <div className="mt-5 rounded-2xl border p-3.5 text-[13px] font-semibold leading-relaxed text-slate-600" style={{ borderColor: `${MAGENTA}40`, backgroundColor: `${MAGENTA}08` }}>
+            <span className="font-black" style={{ color: MAGENTA }}>¿Ya estás en tratamiento?</span>{' '}
+            Para seguir tu tratamiento no uses esta página: escríbenos por WhatsApp.
+          </div>
+
+          <PrimaryButton color={AMBER} onClick={onAceptar} className="mt-5">
+            Entendido, agendar mi evaluación <ArrowRight size={17} />
+          </PrimaryButton>
+
+          <a
+            href={linkWhatsApp('Hola, soy paciente de la clínica y quiero agendar una hora para continuar mi tratamiento.')}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border py-3 text-xs font-extrabold uppercase tracking-[0.08em] transition hover:bg-[#0A9BB8]/5"
+            style={{ borderColor: `${TEAL}55`, color: TEAL }}
+          >
+            <MessageCircle size={16} /> Estoy en tratamiento · WhatsApp
+          </a>
+        </div>
+      </motion.div>
+    </motion.div>
   )
 }
 

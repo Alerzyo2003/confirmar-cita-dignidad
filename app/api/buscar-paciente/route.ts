@@ -14,6 +14,28 @@ function formatearRutChileno(valor: string): string {
   return `${cuerpo}-${dv}`
 }
 
+// Un paciente "tiene tratamientos" si tiene algún presupuesto aprobado
+// o alguna atención ya realizada. Si la consulta falla, no bloqueamos el agendamiento.
+async function pacienteTieneTratamientos(pacienteId: string): Promise<boolean> {
+  try {
+    const [presupuestos, atenciones] = await Promise.all([
+      supabaseAdmin
+        .from('presupuestos')
+        .select('id', { count: 'exact', head: true })
+        .eq('paciente_id', pacienteId)
+        .eq('aprobado', true),
+      supabaseAdmin
+        .from('atenciones_realizadas')
+        .select('id', { count: 'exact', head: true })
+        .eq('paciente_id', pacienteId),
+    ])
+    return (presupuestos.count ?? 0) > 0 || (atenciones.count ?? 0) > 0
+  } catch (err) {
+    console.error('Error al revisar tratamientos del paciente:', err)
+    return false
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const { valor, esOtroDocumento } = await req.json()
@@ -34,7 +56,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json({ paciente: data, rutBuscado })
+    // ¿El paciente ya tiene historial de tratamientos en la clínica?
+    // Solo devolvemos un booleano: nunca exponemos detalles clínicos en esta ruta pública.
+    let tieneTratamientos = false
+    if (data?.id) {
+      tieneTratamientos = await pacienteTieneTratamientos(data.id)
+    }
+
+    return NextResponse.json({ paciente: data, rutBuscado, tieneTratamientos })
   } catch (error) {
     console.error("Error al buscar paciente:", error)
     return NextResponse.json({ error: 'Error del servidor' }, { status: 500 })

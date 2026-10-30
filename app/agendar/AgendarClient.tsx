@@ -9,16 +9,19 @@ import {
   Baby,
   CalendarCheck,
   CalendarDays,
-  CheckCircle,
   ChevronRight,
+  Clock,
   Footprints,
+  Hourglass,
   IdCard,
   Loader2,
+  MessageCircle,
   Search,
   ShieldCheck,
   Smile,
   Sparkles,
   Stethoscope,
+  TriangleAlert,
   User,
   Users,
 } from 'lucide-react'
@@ -42,6 +45,15 @@ const EXCLUDED_PROFESSIONALS = [
 ]
 
 const EASE = [0.22, 1, 0.36, 1] as const
+
+// Agendamiento online = SOLO evaluaciones
+const DURACION_EVALUACION_MIN = 15
+const WHATSAPP_CLINICA = '56966467641'
+const WHATSAPP_CLINICA_LABEL = '+56 9 6646 7641'
+
+function linkWhatsApp(mensaje: string) {
+  return `https://wa.me/${WHATSAPP_CLINICA}?text=${encodeURIComponent(mensaje)}`
+}
 
 type Especialidad = { id: string; nombre: string; cantidadProfesionales: number }
 type Profesional = { id: string; user_id: string; nombre: string; apellido: string; especialidades: string[] }
@@ -124,6 +136,8 @@ export default function AgendarClient() {
   const [documento, setDocumento] = useState('')
   const [buscando, setBuscando] = useState(false)
   const [pacienteEncontrado, setPacienteEncontrado] = useState<Paciente | null | 'no_encontrado'>(null)
+  const [tieneTratamientos, setTieneTratamientos] = useState(false)
+  const [aceptaSoloEvaluacion, setAceptaSoloEvaluacion] = useState(false)
 
   const [creandoNuevo, setCreandoNuevo] = useState(false)
   const [datosNuevoPaciente, setDatosNuevoPaciente] = useState({ nombre: '', apellido: '', rut: '', telefono: '', email: '' })
@@ -198,6 +212,8 @@ export default function AgendarClient() {
     setError('')
     if (!documento.trim()) return setError('Ingresa tu documento')
     setBuscando(true)
+    setTieneTratamientos(false)
+    setAceptaSoloEvaluacion(false)
     try {
       const res = await fetch('/api/buscar-paciente', {
         method: 'POST',
@@ -214,6 +230,7 @@ export default function AgendarClient() {
         setPacienteEncontrado(null)
       } else {
         setPacienteEncontrado(data.paciente)
+        setTieneTratamientos(Boolean(data.tieneTratamientos))
       }
     } catch (err: any) {
       setError(err.message || 'Ocurrió un error al buscar tu ficha.')
@@ -275,6 +292,8 @@ export default function AgendarClient() {
     if (paso === 'fecha_hora') setPaso('documento')
     else if (paso === 'documento') {
       setPacienteEncontrado(null)
+      setTieneTratamientos(false)
+      setAceptaSoloEvaluacion(false)
       setCreandoNuevo(false)
       setPaso(especialidadSeleccionada ? 'profesionalesPorEspecialidad' : 'profesionales')
     } else if (paso === 'profesionalesPorEspecialidad') setPaso('especialidades')
@@ -318,7 +337,10 @@ export default function AgendarClient() {
                   <div className="flex items-center justify-between gap-4">
                     <div>
                       <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-[#22B3CF]">DIGNIDAD</p>
-                      <h1 className="mt-1 text-[25px] font-black tracking-tight text-white">Agendar una cita</h1>
+                      <h1 className="mt-1 text-[25px] font-black tracking-tight text-white">Agendar evaluación</h1>
+                      <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-extrabold text-white">
+                        <Clock size={12} className="text-[#FDB92B]" /> Solo evaluaciones · {DURACION_EVALUACION_MIN} minutos
+                      </p>
                       <p className={`${scriptFont.className} mt-1 text-[21px] text-[#22B3CF]`}>Que sonreír sea costumbre</p>
                     </div>
                     <div className="hidden h-12 w-12 items-center justify-center rounded-2xl bg-white/10 sm:flex">
@@ -346,6 +368,10 @@ export default function AgendarClient() {
                       title="¿Cómo quieres buscar?"
                       description="Encuentra tu especialidad o elige directamente a tu profesional."
                     />
+
+                    <div className="mt-5">
+                      <EvaluationNotice />
+                    </div>
 
                     <div className="mt-6 grid gap-3">
                       <motion.button
@@ -525,7 +551,18 @@ export default function AgendarClient() {
                               <p className="mt-0.5 text-xs font-extrabold" style={{ color: GREEN }}>RUT: {pacienteEncontrado.rut}</p>
                             </div>
                           </div>
-                          <PrimaryButton color={AMBER} onClick={cargarHorarios}>
+
+                          {tieneTratamientos ? (
+                            <ExistingTreatmentReminder
+                              nombre={pacienteEncontrado.nombre}
+                              acepta={aceptaSoloEvaluacion}
+                              onChange={setAceptaSoloEvaluacion}
+                            />
+                          ) : (
+                            <EvaluationNotice compact />
+                          )}
+
+                          <PrimaryButton color={AMBER} disabled={tieneTratamientos && !aceptaSoloEvaluacion} onClick={cargarHorarios}>
                             Continuar a elegir horario <ArrowRight size={17} />
                           </PrimaryButton>
                         </div>
@@ -579,7 +616,7 @@ export default function AgendarClient() {
                               type="text"
                               placeholder={esOtroDocumento ? 'Ingresa tu N° de documento' : 'Ingresa tu RUT (ej: 20791085-6)'}
                               value={documento}
-                              onChange={(e) => { setDocumento(e.target.value); setError(''); setPacienteEncontrado(null) }}
+                              onChange={(e) => { setDocumento(e.target.value); setError(''); setPacienteEncontrado(null); setTieneTratamientos(false); setAceptaSoloEvaluacion(false) }}
                               onKeyDown={(e) => e.key === 'Enter' && !buscando && void buscarPaciente()}
                               className="w-full rounded-xl border bg-[#F8FAFC] py-4 pl-11 pr-4 text-sm font-bold text-[#071B3A] outline-none transition focus:border-[#0A9BB8] focus:ring-2 focus:ring-[#0A9BB8]/10"
                               style={{ borderColor: BORDER }}
@@ -610,7 +647,7 @@ export default function AgendarClient() {
 
                 {paso === 'fecha_hora' && (
                   <motion.div key="fecha" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.35, ease: EASE }}>
-                    <SectionTitle eyebrow="Paso 3 · Paso final" title="Elige día y hora" description={`Con Dr. ${profesionalSeleccionado?.nombre} ${profesionalSeleccionado?.apellido}.`} />
+                    <SectionTitle eyebrow="Paso 3 · Paso final" title="Elige día y hora" description={`Evaluación de ${DURACION_EVALUACION_MIN} minutos con Dr. ${profesionalSeleccionado?.nombre} ${profesionalSeleccionado?.apellido}.`} />
 
                     {error && <div className="mt-4"><ErrorMessage>{error}</ErrorMessage></div>}
 
@@ -697,9 +734,14 @@ export default function AgendarClient() {
                             </div>
                           )}
 
-                          <PrimaryButton color={AMBER} disabled={!horaSeleccionada || agendando} onClick={confirmarCita} className="mt-5">
+                          <p className="mt-5 flex items-start gap-2 rounded-xl bg-[#F8FAFC] px-3 py-2.5 text-[11px] font-bold leading-relaxed text-slate-500">
+                            <MessageCircle size={14} className="mt-0.5 shrink-0 text-[#0A9BB8]" />
+                            <span>Al enviar, tu hora queda reservada como <b className="text-[#071B3A]">pendiente</b>. La clínica la validará contigo por WhatsApp.</span>
+                          </p>
+
+                          <PrimaryButton color={AMBER} disabled={!horaSeleccionada || agendando} onClick={confirmarCita} className="mt-3">
                             {agendando ? <Loader2 className="animate-spin" size={18} /> : <CalendarCheck size={18} />}
-                            Confirmar evaluación
+                            Solicitar evaluación
                           </PrimaryButton>
                         </div>
                       )}
@@ -710,27 +752,63 @@ export default function AgendarClient() {
                 {paso === 'exito' && (
                   <motion.div key="exito" initial={{ opacity: 0, scale: 0.98, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ duration: 0.45, ease: EASE }}>
                     <div className="rounded-[26px] bg-white p-6 text-center shadow-[0_22px_60px_-30px_rgba(7,27,58,0.55)] sm:p-8">
-                      <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full" style={{ backgroundColor: `${GREEN}15`, color: GREEN }}>
-                        <CheckCircle size={42} />
+                      <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full" style={{ backgroundColor: `${AMBER}22`, color: '#B8860B' }}>
+                        <Hourglass size={38} />
                       </div>
-                      <p className="mt-5 text-[11px] font-extrabold uppercase tracking-[0.18em]" style={{ color: GREEN }}>Agendamiento confirmado</p>
-                      <h2 className="mt-2 text-3xl font-black tracking-tight text-[#071B3A]">¡Cita confirmada!</h2>
-                      <p className="mx-auto mt-2 max-w-sm text-sm font-medium leading-relaxed text-slate-500">Tu evaluación presencial ha sido agendada con éxito.</p>
+                      <p className="mt-5 text-[11px] font-extrabold uppercase tracking-[0.18em] text-[#B8860B]">Pendiente de validación</p>
+                      <h2 className="mt-2 text-3xl font-black tracking-tight text-[#071B3A]">¡Solicitud recibida!</h2>
+                      <p className="mx-auto mt-2 max-w-sm text-sm font-medium leading-relaxed text-slate-500">
+                        Reservamos tu hora de <b className="text-[#071B3A]">evaluación</b>, pero <b className="text-[#071B3A]">aún no está confirmada</b>.
+                      </p>
 
-                      <div className="mt-6 rounded-[20px] border p-5 text-left" style={{ borderColor: BORDER, backgroundColor: SOFT }}>
+                      <div className="mt-5 rounded-[20px] border p-4 text-left" style={{ borderColor: `${TEAL}40`, backgroundColor: `${TEAL}0D` }}>
+                        <div className="flex items-start gap-3">
+                          <MessageCircle size={22} className="mt-0.5 shrink-0" style={{ color: TEAL }} />
+                          <div className="text-sm font-semibold leading-relaxed text-[#071B3A]">
+                            <p className="font-black">La clínica te contactará por WhatsApp para aprobar tu cita.</p>
+                            <p className="mt-1 text-slate-600">
+                              {pacienteEncontrado && pacienteEncontrado !== 'no_encontrado' && pacienteEncontrado.telefono
+                                ? <>Te escribiremos al <b>{pacienteEncontrado.telefono}</b>. </>
+                                : null}
+                              Tu cita queda aprobada solo cuando la clínica te la confirme por ese medio.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 rounded-[20px] border p-5 text-left" style={{ borderColor: BORDER, backgroundColor: SOFT }}>
                         <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Profesional</p>
                         <p className="mt-1 text-lg font-black text-[#071B3A]">Dr. {profesionalSeleccionado?.nombre} {profesionalSeleccionado?.apellido}</p>
-                        <div className="mt-4 grid grid-cols-2 gap-4 border-t pt-4" style={{ borderColor: BORDER }}>
+                        <div className="mt-4 grid grid-cols-3 gap-3 border-t pt-4" style={{ borderColor: BORDER }}>
                           <div>
                             <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Fecha</p>
                             <p className="mt-1 text-sm font-black text-[#071B3A]">{diaSeleccionado?.fecha}</p>
                           </div>
-                          <div className="text-right">
+                          <div className="text-center">
                             <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Hora</p>
                             <p className="mt-1 text-sm font-black" style={{ color: areaActual.color }}>{horaSeleccionada}</p>
                           </div>
+                          <div className="text-right">
+                            <p className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Duración</p>
+                            <p className="mt-1 text-sm font-black text-[#071B3A]">{DURACION_EVALUACION_MIN} min</p>
+                          </div>
                         </div>
+                        <p className="mt-4 border-t pt-3 text-xs font-bold text-slate-500" style={{ borderColor: BORDER }}>
+                          Tipo de atención: <span className="font-black text-[#071B3A]">Evaluación</span> (no incluye tratamientos)
+                        </p>
                       </div>
+
+                      <a
+                        href={linkWhatsApp(
+                          `Hola, agendé una evaluación online para el ${diaSeleccionado?.fecha ?? ''} a las ${horaSeleccionada ?? ''} con Dr. ${profesionalSeleccionado?.nombre ?? ''} ${profesionalSeleccionado?.apellido ?? ''}. ¿Me la pueden confirmar?`
+                        )}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl border py-3 text-xs font-extrabold uppercase tracking-[0.08em] transition hover:bg-[#0A9BB8]/5"
+                        style={{ borderColor: `${TEAL}55`, color: TEAL }}
+                      >
+                        <MessageCircle size={16} /> ¿No te escribimos? Contáctanos al {WHATSAPP_CLINICA_LABEL}
+                      </a>
 
                       <button type="button" onClick={() => window.location.reload()} className="mt-6 text-xs font-extrabold uppercase tracking-widest text-slate-400 underline underline-offset-4 hover:text-[#071B3A]">
                         Agendar otra cita / Volver al inicio
@@ -760,6 +838,85 @@ function Loading({ message = 'Cargando...' }: { message?: string }) {
 
 function EmptyState({ message }: { message: string }) {
   return <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">{message}</div>
+}
+
+// Aviso fijo: la reserva online es solo para evaluación y debe validarse por WhatsApp
+function EvaluationNotice({ compact = false }: { compact?: boolean }) {
+  return (
+    <div className="rounded-[18px] border p-4" style={{ borderColor: `${AMBER}66`, backgroundColor: `${AMBER}12` }}>
+      <div className="flex items-start gap-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white" style={{ color: '#B8860B' }}>
+          <Clock size={18} />
+        </span>
+        <div className="min-w-0 text-[13px] font-semibold leading-relaxed text-[#5C4508]">
+          <p className="font-black text-[#071B3A]">
+            Esta hora es solo para <span className="underline decoration-[#FDB92B] decoration-2 underline-offset-2">EVALUACIÓN</span>
+          </p>
+          {!compact && (
+            <p className="mt-1">
+              Dura {DURACION_EVALUACION_MIN} minutos y es gratuita: el profesional revisa tu caso y te entrega un presupuesto. No se realizan tratamientos en esta hora.
+            </p>
+          )}
+          <p className="mt-1">
+            {compact ? `Dura ${DURACION_EVALUACION_MIN} minutos. ` : ''}
+            Tu cita queda <b>pendiente</b> hasta que la clínica la valide por <b>WhatsApp</b>.
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Recordatorio para pacientes que ya tienen tratamientos: deben aceptar que es solo evaluación
+function ExistingTreatmentReminder({
+  nombre,
+  acepta,
+  onChange,
+}: {
+  nombre: string
+  acepta: boolean
+  onChange: (value: boolean) => void
+}) {
+  const primerNombre = (nombre || '').trim().split(/\s+/)[0] || ''
+  const nombreBonito = primerNombre ? primerNombre.charAt(0).toUpperCase() + primerNombre.slice(1).toLowerCase() : ''
+
+  return (
+    <div className="rounded-[18px] border-2 p-4" style={{ borderColor: `${MAGENTA}55`, backgroundColor: `${MAGENTA}0A` }}>
+      <div className="flex items-start gap-3">
+        <TriangleAlert size={22} className="mt-0.5 shrink-0" style={{ color: MAGENTA }} />
+        <div className="min-w-0 text-[13px] font-semibold leading-relaxed text-[#071B3A]">
+          <p className="font-black" style={{ color: MAGENTA }}>
+            {nombreBonito ? `${nombreBonito}, recuerda:` : 'Recuerda:'} esta hora es solo para evaluación
+          </p>
+          <p className="mt-1 text-slate-600">
+            Vemos que ya tienes tratamientos con nosotros. Por aquí solo puedes agendar una <b>evaluación de {DURACION_EVALUACION_MIN} minutos</b>; en esta hora <b>no se continúan ni realizan tratamientos</b>.
+          </p>
+          <p className="mt-1 text-slate-600">
+            Si quieres una hora para seguir tu tratamiento, escríbenos por WhatsApp.
+          </p>
+          <a
+            href={linkWhatsApp('Hola, soy paciente de la clínica y quiero agendar una hora para continuar mi tratamiento.')}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 inline-flex items-center gap-1.5 text-xs font-extrabold underline-offset-4 hover:underline"
+            style={{ color: TEAL }}
+          >
+            <MessageCircle size={14} /> Agendar mi tratamiento por WhatsApp ({WHATSAPP_CLINICA_LABEL})
+          </a>
+        </div>
+      </div>
+
+      <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl bg-white p-3 text-[13px] font-bold text-[#071B3A]">
+        <input
+          type="checkbox"
+          checked={acepta}
+          onChange={(e) => onChange(e.target.checked)}
+          className="mt-0.5 h-5 w-5 shrink-0 rounded accent-[#B01C48]"
+        />
+        Entiendo que esta hora es solo para una evaluación de {DURACION_EVALUACION_MIN} minutos y que debe ser confirmada por la clínica vía WhatsApp.
+      </label>
+    </div>
+  )
 }
 
 function ErrorMessage({ children }: { children: React.ReactNode }) {
@@ -816,6 +973,9 @@ function NewPatientForm({
       <p className="text-sm font-bold leading-relaxed text-[#8A6510]">
         {creandoNuevo ? 'Registro de nuevo paciente.' : 'No encontramos tu ficha.'} Ingresa tus datos para continuar.
       </p>
+      <div className="mt-3">
+        <EvaluationNotice compact />
+      </div>
       {error && <div className="mt-3"><ErrorMessage>{error}</ErrorMessage></div>}
       <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
         <input aria-label="Nombre" type="text" placeholder="Nombre" className={inputClass} value={data.nombre} onChange={(e) => setData({ ...data, nombre: e.target.value })} />

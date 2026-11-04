@@ -34,3 +34,15 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Reagendamiento por enlace
+
+Recepción genera un enlace desde AureoDent y el paciente elige su nueva hora en `/reagendar/<token>`,
+con el mismo profesional, motivo y duración.
+
+- `lib/reagendamiento/horarios.ts`: reglas para mantener la agenda compacta (funciones puras).
+- `lib/reagendamiento/servidor.ts` y `app/api/reagendar/[token]`: datos y confirmación.
+- `supabase/migrations/20261104120000_reagendamiento_enlaces.sql`: tabla e historial, más las funciones
+  `generar_enlace_reagendamiento` y `confirmar_reagendamiento`. Debe aplicarse antes de publicar el código.
+
+Pruebas de la lógica de horarios: `npm test`.

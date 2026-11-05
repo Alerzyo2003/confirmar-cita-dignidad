@@ -36,18 +36,18 @@ export default function ConfirmarCitaClient({
   // Las citas creadas desde /agendar llevan este motivo (ver app/api/crear-cita)
   const esAgendamientoOnline = String(cita.motivo || '').toLowerCase().includes('agendamiento online')
 
-  const fecha = new Date(cita.inicio).toLocaleDateString('es-CL', {
+  // La hora de la cita se guarda como hora de Chile, sin zona horaria ("2026-11-05T17:45:00"), y se muestra tal cual.
+  // Antes se convertía con Date: la página se arma en el servidor (hora UTC) y la hora salía 3 horas antes.
+  const inicioTexto = String(cita.inicio || '').replace(' ', 'T')
+  const [anio, mes, dia] = inicioTexto.slice(0, 10).split('-').map(Number)
+  const fecha = new Date(Date.UTC(anio, mes - 1, dia, 12)).toLocaleDateString('es-CL', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
+    timeZone: 'UTC',
   })
 
-  const hora = new Date(cita.inicio).toLocaleTimeString('es-CL', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-    timeZone: 'America/Santiago',
-  })
+  const hora = inicioTexto.slice(11, 16)
 
   const confirmar = async () => {
     setLoading(true)

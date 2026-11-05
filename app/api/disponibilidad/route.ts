@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { ahoraEnClinica } from '@/lib/reagendamiento/servidor'
 
 export const dynamic = 'force-dynamic'
 
@@ -8,7 +9,6 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-function formatearFecha(date: Date) { return date.toISOString().split('T')[0] }
 function timeToMins(t: string) { const [h,m] = t.split(':').map(Number); return h * 60 + m; }
 function minsToTime(m: number) { return `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}` }
 
@@ -20,6 +20,10 @@ export async function GET(req: Request) {
 
     if (!userId || !profId) return NextResponse.json({ error: 'Faltan IDs' }, { status: 400 })
 
+    // "Hoy" y la hora actual en Chile: el servidor (Vercel) funciona en hora UTC, 3 horas adelantado
+    const ahora = ahoraEnClinica()
+    const [anioHoy, mesHoy, diaHoy] = ahora.fecha.split('-').map(Number)
+
     const { data: disponibilidades } = await supabaseAdmin
       .from('disponibilidad_profesional')
       .select('*')
@@ -30,25 +34,23 @@ export async function GET(req: Request) {
       .from('citas')
       .select('inicio, fin, estado, estado_confirmacion, motivo')
       .eq('profesional_id', userId)
-      .gte('inicio', formatearFecha(new Date()))
+      .gte('inicio', ahora.fecha)
       .neq('estado', 'cancelada')
 
     const { data: bloqueos } = await supabaseAdmin
       .from('bloqueos_agenda')
       .select('*')
       .eq('profesional_id', profId)
-      .gte('fecha', formatearFecha(new Date()))
+      .gte('fecha', ahora.fecha)
 
     const diasDisponibles = []
     const diasNombres = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
-    const hoy = new Date()
-    
     for (let i = 0; i < 30; i++) {
-      const fechaActual = new Date()
-      fechaActual.setDate(hoy.getDate() + i)
+      // Fechas del calendario de la clínica (se calculan en UTC para que la zona del servidor no las mueva)
+      const fechaActual = new Date(Date.UTC(anioHoy, mesHoy - 1, diaHoy + i))
       
-      const fechaStr = formatearFecha(fechaActual)
-      const diaSemana = fechaActual.getDay()
+      const fechaStr = fechaActual.toISOString().slice(0, 10)
+      const diaSemana = fechaActual.getUTCDay()
       
       const dispDelDia = disponibilidades?.filter(d => 
         (d.fecha_especifica === fechaStr) || (!d.fecha_especifica && d.dia_semana === diaSemana)
@@ -87,8 +89,7 @@ export async function GET(req: Request) {
 
             if (!chocaBloqueo && !chocaCita) {
                if (i === 0) {
-                  const ahoraMins = hoy.getHours() * 60 + hoy.getMinutes()
-                  if (startSlot > ahoraMins) slotsDelDia.push(minsToTime(startSlot))
+                  if (startSlot > ahora.minutos) slotsDelDia.push(minsToTime(startSlot))
                } else {
                   slotsDelDia.push(minsToTime(startSlot))
                }
@@ -101,7 +102,7 @@ export async function GET(req: Request) {
          diasDisponibles.push({
             fecha: fechaStr,
             diaNombre: diasNombres[diaSemana],
-            diaNumero: fechaActual.getDate(),
+            diaNumero: fechaActual.getUTCDate(),
             slots: [...new Set(slotsDelDia)].sort()
          })
       }

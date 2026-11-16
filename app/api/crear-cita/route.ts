@@ -1,14 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { buscarPacientePorRut, rutParaGuardar } from '@/lib/rutPacientes'
 
-function formatearRutChileno(valor: string): string {
-  if (!valor) return ''
-  const limpio = valor.replace(/[^0-9kK]/g, '').toUpperCase()
-  if (limpio.length < 2) return limpio
-  const cuerpo = limpio.slice(0, -1)
-  const dv = limpio.slice(-1)
-  return `${cuerpo}-${dv}`
-}
 
 export async function POST(req: Request) {
   try {
@@ -28,14 +21,12 @@ export async function POST(req: Request) {
 
     // 🛑 1. SI ES PACIENTE NUEVO, LO CREAMOS PRIMERO
     if (!finalPacienteId && pacienteNuevo) {
-       const rutFinal = esOtroDocumento ? pacienteNuevo.rut.trim() : formatearRutChileno(pacienteNuevo.rut.trim());
-       
-       // Buscar si el paciente ya existe (evita el error 23505)
-       const { data: pacienteExistente } = await supabaseAdmin
-         .from('pacientes')
-         .select('id')
-         .eq('rut', rutFinal)
-         .single();
+       const rutFinal = esOtroDocumento ? pacienteNuevo.rut.trim() : rutParaGuardar(pacienteNuevo.rut.trim());
+
+       // Buscar si el paciente ya existe, aunque su RUT esté guardado con o sin puntos/guion
+       const pacienteExistente = esOtroDocumento
+         ? (await supabaseAdmin.from('pacientes').select('id').eq('rut', rutFinal).maybeSingle()).data
+         : await buscarPacientePorRut<{ id: string }>(supabaseAdmin, rutFinal, 'id');
 
        if (pacienteExistente) {
            finalPacienteId = pacienteExistente.id;
